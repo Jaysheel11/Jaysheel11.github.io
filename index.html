@@ -62,6 +62,48 @@
   .legend { display: flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--ink-soft); font-family: var(--display); }
   .legend i { display: block; width: 120px; height: 10px; border-radius: 2px; background: linear-gradient(90deg, var(--z1), var(--z2), var(--z3), var(--z4), var(--z5)); }
   .cube-caption { max-width: 38ch; text-align: center; font-size: .95rem; color: var(--ink-soft); }
+  .feature .cube-panel { justify-items: start; margin-top: 28px; }
+  .feature .cube-caption { text-align: left; }
+
+  /* night band: hero with live globe */
+  .night { --night-text: #AFC0DA; background: radial-gradient(ellipse 70% 80% at 72% 45%, #1C2E5A 0%, #0D1A33 62%); color: var(--paper); overflow: hidden; }
+  .night .nav a { color: var(--paper); }
+  .night .nav ul a { color: var(--night-text); }
+  .night .nav ul a:hover { color: var(--paper); }
+  .night .hero { padding-top: 40px; padding-bottom: 88px; grid-template-columns: 0.9fr 1.1fr; gap: 24px; }
+  .night .hero p.sub { color: var(--night-text); }
+  .night .btn { border-color: var(--paper); }
+  .night .btn.primary { background: var(--paper); color: var(--ink); }
+  .night .btn.primary:hover { background: var(--z3); border-color: var(--z3); color: var(--ink); }
+  .night .btn.ghost { color: var(--paper); }
+  .night .btn.ghost:hover { background: var(--paper); color: var(--ink); }
+  .night a:focus-visible { outline-color: var(--z3); }
+
+  .live { margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(175,192,218,.3); }
+  .live-head { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 600; font-size: .95rem; }
+  .live-head i { width: 9px; height: 9px; border-radius: 50%; background: var(--z2); box-shadow: 0 0 0 0 rgba(44,156,90,.7); animation: pulse 2s infinite; }
+  .live-head i.off { background: var(--z4); animation: none; }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 9px rgba(44,156,90,0); } 100% { box-shadow: 0 0 0 0 rgba(44,156,90,0); } }
+  .live dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 28px; margin-top: 16px; }
+  .live dd { font-family: var(--display); font-weight: 700; font-size: 1.35rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .live dt { font-family: var(--display); font-size: .88rem; color: var(--night-text); }
+  .live div { display: flex; flex-direction: column-reverse; }
+  .find { margin-top: 20px; min-height: 42px; padding: 0 18px; border-radius: 6px; border: 1.5px solid rgba(238,242,245,.6); background: transparent; color: var(--paper); font-weight: 600; font-size: .95rem; cursor: pointer; transition: background .2s, color .2s; }
+  .find:hover { background: var(--paper); color: var(--ink); }
+
+  .night .hero > * { min-width: 0; }
+  .globe-col { display: grid; justify-items: center; gap: 10px; min-width: 0; }
+  .globe { width: 100%; max-width: 620px; aspect-ratio: 1; cursor: grab; overflow: hidden; }
+  .globe canvas { display: block; }
+  .globe:active { cursor: grabbing; }
+  .globe-fallback { display: grid; place-items: center; height: 100%; text-align: center; color: var(--night-text); font-family: var(--display); padding: 24px; }
+  .globe-key { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 20px; font-family: var(--display); font-size: .85rem; color: var(--night-text); max-width: 520px; text-align: center; }
+  .globe-key span { display: inline-flex; align-items: center; gap: 7px; }
+  .globe-key .sw { width: 18px; height: 3px; background: var(--z3); border-radius: 2px; }
+  .globe-key .rain { width: 40px; height: 6px; border-radius: 2px; background: linear-gradient(90deg, var(--z1), var(--z2), var(--z3), var(--z4), var(--z5)); }
+  .globe-key small { flex-basis: 100%; font-size: .8rem; opacity: .8; }
+  .sat-label { pointer-events: none; transform: translate(-5px, -5px); font-family: var(--display); font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,.9); }
+  .sat-label::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; border-radius: 50%; background: var(--c, #fff); box-shadow: 0 0 0 3px rgba(255,255,255,.25), 0 0 12px var(--c, #fff); }
 
   /* sections */
   section.block { padding: 96px 0; border-top: 1px solid var(--rule); }
@@ -128,7 +170,8 @@
 
   @media (max-width: 900px) {
     .hero, .head, .feature, .pubs li, .timeline li, .two { grid-template-columns: 1fr; gap: 20px; }
-    .hero { padding-top: 24px; }
+    .hero, .night .hero { padding-top: 24px; grid-template-columns: 1fr; }
+    .globe { max-width: 460px; }
     .grid { grid-template-columns: 1fr 1fr; }
     .head { margin-bottom: 36px; }
   }
@@ -148,6 +191,7 @@
 </head>
 <body>
 
+<div class="night">
 <header class="wrap nav">
   <a href="#top">Jaysheel Golani</a>
   <nav aria-label="Sections">
@@ -170,18 +214,29 @@
         <a class="btn primary" href="#research">See the research</a>
         <a class="btn ghost" href="https://github.com/Jaysheel11">GitHub</a>
       </div>
+
+      <div class="live" aria-live="off">
+        <p class="live-head"><i id="live-dot"></i><span id="live-status">Connecting to live satellite data…</span></p>
+        <dl>
+          <div><dt>Where GPM is now</dt><dd id="r-pos">–</dd></div>
+          <div><dt>GPM altitude and speed</dt><dd id="r-alt">–</dd></div>
+          <div><dt>GPM's next pass over India</dt><dd id="r-next">–</dd></div>
+          <div><dt>Indian cities with rain right now</dt><dd id="r-rain">–</dd></div>
+        </dl>
+        <button type="button" class="find" id="find-gpm" hidden>Turn the globe to GPM</button>
+      </div>
     </div>
 
-    <div class="cube-panel">
-      <div class="stack" aria-hidden="true"><div class="stack-inner" id="stack"></div></div>
-      <div class="slider-row">
-        <label class="slider-label" for="t"><span>Slice the cube in time</span><span id="t-out">00:00 UTC</span></label>
-        <input id="t" type="range" min="0" max="7" value="0" step="1">
+    <div class="globe-col">
+      <div class="globe" id="globe" role="img" aria-label="Live 3D globe showing the current positions of the GPM, INSAT-3DR and Himawari-9 satellites, GPM's orbit path, and current rain at Indian cities"></div>
+      <div class="globe-key">
+        <span><i class="sw"></i>GPM orbit, next 90 min</span>
+        <span><i class="rain"></i>Rain now at 10 cities</span>
+        <small>Positions update every second from public orbit data. Drag to spin. Geostationary satellites are drawn closer than real scale.</small>
       </div>
-      <div class="legend"><span>light</span><i></i><span>heavy rain</span></div>
-      <p class="cube-caption">A datacube stacks a satellite's images through time so any slice is one query away. This storm is simulated for illustration.</p>
     </div>
   </section>
+</div>
 
   <section class="block" id="research">
     <div class="wrap">
@@ -234,6 +289,15 @@
         <div>
           <h3>INSATCUBE</h3>
           <span class="tag">IEEE InGARSS 2025 · oral</span>
+          <div class="cube-panel">
+            <div class="stack" aria-hidden="true"><div class="stack-inner" id="stack"></div></div>
+            <div class="slider-row">
+              <label class="slider-label" for="t"><span>Slice the cube in time</span><span id="t-out">00:00 UTC</span></label>
+              <input id="t" type="range" min="0" max="7" value="0" step="1">
+            </div>
+            <div class="legend"><span>light</span><i></i><span>heavy rain</span></div>
+            <p class="cube-caption">A datacube stacks a satellite's images through time so any slice is one query away. This storm is simulated.</p>
+          </div>
         </div>
         <div>
           <p class="lead">A scalable, analysis-ready datacube for India's INSAT-3DR geostationary satellite.</p>
@@ -419,14 +483,192 @@
   // one intro sweep through time, then hand control to the visitor
   let timer = null;
   function stopIntro() { if (timer) { clearInterval(timer); timer = null; } }
-  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    let t = 0;
-    timer = setInterval(() => {
-      t++;
-      if (t >= N) { stopIntro(); return; }
-      slider.value = t; show(t);
-    }, 450);
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches && "IntersectionObserver" in window) {
+    const io = new IntersectionObserver(entries => {
+      if (!entries[0].isIntersecting) return;
+      io.disconnect();
+      let t = 0;
+      timer = setInterval(() => {
+        t++;
+        if (t >= N) { stopIntro(); return; }
+        slider.value = t; show(t);
+      }, 450);
+    }, { threshold: 0.6 });
+    io.observe(stack.parentElement);
   }
+})();
+</script>
+
+<script src="https://unpkg.com/globe.gl@2.46.1/dist/globe.gl.min.js"></script>
+<script src="https://unpkg.com/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script>
+(() => {
+  const el = document.getElementById("globe");
+  const $ = id => document.getElementById(id);
+  const fallback = msg => { el.innerHTML = `<div class="globe-fallback">${msg}</div>`; };
+
+  const webgl = (() => { try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch (e) { return false; } })();
+  if (!window.Globe || !webgl) { fallback("The live globe needs WebGL, which this browser doesn't have turned on."); }
+
+  // ---------- satellites (public orbit data from CelesTrak) ----------
+  const SATS = [
+    { id: 39574, name: "GPM", color: "#F2D13A", geo: false },
+    { id: 41752, name: "INSAT-3DR", color: "#8FD3F4", geo: true },
+    { id: 41836, name: "Himawari-9", color: "#C7B8FF", geo: true }
+  ];
+  const GEO_DRAW_ALT = 0.28; // real height is ~5.6 Earth radii; drawn closer so it fits
+
+  async function loadTLE(sat) {
+    const key = "tle-" + sat.id;
+    try {
+      const cached = JSON.parse(localStorage.getItem(key) || "null");
+      if (cached && Date.now() - cached.t < 6 * 3600e3) return cached.lines;
+    } catch (e) {}
+    const txt = await (await fetch(`https://celestrak.org/NORAD/elements/gp.php?CATNR=${sat.id}&FORMAT=TLE`)).text();
+    const lines = txt.trim().split(/\r?\n/).map(s => s.trim());
+    if (lines.length < 3 || !lines[1].startsWith("1 ")) throw new Error("bad TLE");
+    try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), lines })); } catch (e) {}
+    return lines;
+  }
+
+  function where(satrec, date) {
+    const pv = satellite.propagate(satrec, date);
+    if (!pv || !pv.position) return null;
+    const geo = satellite.eciToGeodetic(pv.position, satellite.gstime(date));
+    const v = pv.velocity;
+    return {
+      lat: satellite.degreesLat(geo.latitude),
+      lng: satellite.degreesLong(geo.longitude),
+      km: geo.height,
+      speed: Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
+    };
+  }
+
+  const overIndia = p => p.lat > 8 && p.lat < 35.5 && p.lng > 68 && p.lng < 97.5;
+  const fmtLat = p => `${Math.abs(p.lat).toFixed(1)}°${p.lat >= 0 ? "N" : "S"} ${Math.abs(p.lng).toFixed(1)}°${p.lng >= 0 ? "E" : "W"}`;
+
+  // ---------- rain at Indian cities (Open-Meteo, live) ----------
+  const CITIES = [
+    ["Hyderabad", 17.39, 78.49], ["Mumbai", 19.08, 72.88], ["Delhi", 28.61, 77.21], ["Kolkata", 22.57, 88.36],
+    ["Chennai", 13.08, 80.27], ["Bengaluru", 12.97, 77.59], ["Guwahati", 26.14, 91.74], ["Kochi", 9.93, 76.27],
+    ["Ahmedabad", 23.02, 72.57], ["Bhubaneswar", 20.30, 85.82]
+  ].map(([name, lat, lng]) => ({ name, lat, lng, mm: null }));
+  const RAMP = ["#8FD3F4", "#2C9C5A", "#F2D13A", "#EE8A2B", "#D7302A"];
+  const rainColor = mm => mm == null ? "rgba(200,210,225,.6)" : mm <= 0 ? "rgba(200,210,225,.85)" : RAMP[Math.min(4, Math.floor(Math.log2(mm * 4 + 1)))];
+
+  async function loadRain() {
+    const q = `latitude=${CITIES.map(c => c.lat).join(",")}&longitude=${CITIES.map(c => c.lng).join(",")}&current=precipitation`;
+    const data = await (await fetch("https://api.open-meteo.com/v1/forecast?" + q)).json();
+    (Array.isArray(data) ? data : [data]).forEach((d, i) => { CITIES[i].mm = d.current ? d.current.precipitation : null; });
+    const wet = CITIES.filter(c => c.mm > 0);
+    $("r-rain").textContent = wet.length ? `${wet.length} of ${CITIES.length}: ${wet.slice(0, 2).map(c => c.name).join(", ")}${wet.length > 2 ? "…" : ""}` : `None of ${CITIES.length}, all dry`;
+    if (globe) globe.pointsData(CITIES);
+  }
+
+  // ---------- globe ----------
+  let globe = null;
+  if (window.Globe && webgl) {
+    globe = new Globe(el, { animateIn: true })
+      .backgroundColor("rgba(0,0,0,0)")
+      .globeImageUrl("https://unpkg.com/three-globe@2.31.0/example/img/earth-blue-marble.jpg")
+      .atmosphereColor("#8FB8FF")
+      .atmosphereAltitude(0.16)
+      .pointOfView({ lat: 14, lng: 84, altitude: 2.7 }, 0)
+      .pointLat("lat").pointLng("lng")
+      .pointColor(d => rainColor(d.mm))
+      .pointAltitude(d => 0.006 + Math.min(d.mm || 0, 12) * 0.012)
+      .pointRadius(0.55)
+      .pointLabel(d => `<b>${d.name}</b><br>${d.mm == null ? "no reading" : d.mm > 0 ? d.mm + " mm rain in the last 15 min" : "dry right now"}`)
+      .pathPoints("pts").pathPointLat(p => p[0]).pathPointLng(p => p[1]).pathPointAlt(p => p[2])
+      .pathColor(() => ["rgba(242,209,58,0.95)", "rgba(242,209,58,0.05)"])
+      .pathStroke(1.6)
+      .pathTransitionDuration(0)
+      .htmlLat("lat").htmlLng("lng").htmlAltitude("alt")
+      .htmlTransitionDuration(0)
+      .htmlElement(d => { const e = document.createElement("div"); e.className = "sat-label"; e.style.setProperty("--c", d.color); e.textContent = d.name; return e; });
+
+    const c = globe.controls();
+    c.enableZoom = false;
+    c.enablePan = false;
+    const sizeIt = () => {
+      const w = el.clientWidth;
+      globe.width(w).height(w);
+      // on touch screens: vertical swipes scroll the page, sideways drags spin the globe
+      globe.renderer().domElement.style.touchAction = "pan-y";
+    };
+    sizeIt();
+    if ("ResizeObserver" in window) new ResizeObserver(sizeIt).observe(el);
+    globe.pointsData(CITIES);
+  }
+
+  // ---------- live loop ----------
+  async function start() {
+    const live = [];
+    for (const s of SATS) {
+      try { const l = await loadTLE(s); live.push({ ...s, rec: satellite.twoline2satrec(l[1], l[2]) }); } catch (e) {}
+    }
+    const gpm = live.find(s => s.id === 39574);
+    if (!gpm) {
+      $("live-dot").classList.add("off");
+      $("live-status").textContent = "Live orbit data is unavailable right now.";
+      return;
+    }
+    $("live-status").textContent = "Live: satellite positions and rain";
+
+    const markers = live.map(s => ({ name: s.name, color: s.color, rec: s.rec, geo: s.geo, lat: 0, lng: 0, alt: 0 }));
+
+    function tick() {
+      const now = new Date();
+      markers.forEach(m => {
+        const p = where(m.rec, now);
+        if (!p) return;
+        m.lat = p.lat; m.lng = p.lng; m.alt = m.geo ? GEO_DRAW_ALT : p.km / 6371;
+      });
+      const p = where(gpm.rec, now);
+      if (p) {
+        $("r-pos").textContent = overIndia(p) ? `${fmtLat(p)}, over India` : fmtLat(p);
+        $("r-alt").textContent = `${Math.round(p.km)} km, ${p.speed.toFixed(1)} km/s`;
+      }
+      if (globe) globe.htmlElementsData(markers);
+    }
+
+    function orbitAndPass() {
+      const now = Date.now();
+      const pts = [];
+      for (let m = 0; m <= 90; m += 1) {
+        const p = where(gpm.rec, new Date(now + m * 60e3));
+        if (p) pts.push([p.lat, p.lng, p.km / 6371]);
+      }
+      if (globe) globe.pathsData([{ pts }]);
+      let next = null;
+      for (let m = 0; m <= 24 * 60; m += 1) {
+        const p = where(gpm.rec, new Date(now + m * 60e3));
+        if (p && overIndia(p)) { next = m; break; }
+      }
+      $("r-next").textContent = next === 0 ? "Overhead now" : next == null ? "Not in the next 24 h" :
+        next < 60 ? `In ${next} min` : `In ${Math.floor(next / 60)} h ${next % 60} min`;
+    }
+
+    if (globe) {
+      const btn = $("find-gpm");
+      btn.hidden = false;
+      let home = true;
+      btn.addEventListener("click", () => {
+        const p = where(gpm.rec, new Date());
+        if (home && p) { globe.pointOfView({ lat: p.lat, lng: p.lng, altitude: 2.7 }, 1400); btn.textContent = "Back to India"; }
+        else { globe.pointOfView({ lat: 14, lng: 84, altitude: 2.7 }, 1400); btn.textContent = "Turn the globe to GPM"; }
+        home = !home;
+      });
+    }
+
+    tick(); orbitAndPass();
+    setInterval(tick, 1000);
+    setInterval(orbitAndPass, 60e3);
+  }
+
+  start();
+  loadRain().catch(() => { $("r-rain").textContent = "Unavailable"; });
+  setInterval(() => loadRain().catch(() => {}), 10 * 60e3);
 })();
 </script>
 </body>
