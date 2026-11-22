@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jaysheel Golani</title>
+<meta name="description" content="Jaysheel Golani: research engineer building datacube platforms for satellite precipitation data at IIT Hyderabad.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EEF2F5;
+    --paper-2: #E2E8EE;
+    --ink: #14213D;
+    --ink-soft: #46546E;
+    --rule: #C3CDD8;
+    --link: #1D5FA8;
+    /* radar reflectivity ramp, used only for data */
+    --z1: #8FD3F4; --z2: #2C9C5A; --z3: #F2D13A; --z4: #EE8A2B; --z5: #D7302A;
+    --display: "Archivo", system-ui, sans-serif;
+    --body: "Source Serif 4", Georgia, serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 1.1rem; line-height: 1.65; }
+  a { color: var(--link); text-underline-offset: 3px; }
+  a:hover { color: var(--ink); }
+  :focus-visible { outline: 3px solid var(--z4); outline-offset: 3px; border-radius: 3px; }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 28px; }
+  h1, h2, h3, .nav, .tag, .meta, button, .slider-label { font-family: var(--display); }
+
+  /* nav */
+  .nav { display: flex; justify-content: space-between; align-items: center; padding: 26px 0; font-weight: 600; font-size: 1rem; }
+  .nav a { color: var(--ink); text-decoration: none; }
+  .nav ul { display: flex; gap: 26px; list-style: none; }
+  .nav ul a { font-weight: 500; color: var(--ink-soft); }
+  .nav ul a:hover { color: var(--ink); }
+
+  /* hero */
+  .hero { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; padding: 56px 0 104px; }
+  h1 { font-weight: 800; font-stretch: 62%; font-size: clamp(3.6rem, 10vw, 8.4rem); line-height: .86; letter-spacing: -.01em; text-transform: uppercase; }
+  .hero-line { font-family: var(--display); font-stretch: 112%; font-weight: 500; font-size: clamp(1.25rem, 2.2vw, 1.6rem); line-height: 1.3; margin-top: 28px; max-width: 26ch; }
+  .hero p.sub { margin-top: 18px; max-width: 46ch; color: var(--ink-soft); }
+  .hero-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+  .btn { display: inline-flex; align-items: center; min-height: 46px; padding: 0 22px; border-radius: 6px; font-family: var(--display); font-weight: 600; text-decoration: none; border: 2px solid var(--ink); }
+  .btn.primary { background: var(--ink); color: var(--paper); }
+  .btn.primary:hover { background: var(--link); border-color: var(--link); color: #fff; }
+  .btn.ghost { color: var(--ink); }
+  .btn.ghost:hover { background: var(--ink); color: var(--paper); }
+
+  /* datacube */
+  .cube-panel { display: grid; justify-items: center; gap: 18px; }
+  .stack { position: relative; width: 300px; height: 330px; perspective: 1400px; }
+  .stack-inner { position: absolute; left: 50%; top: 58%; transform-style: preserve-3d; transform: rotateX(58deg) rotateZ(-38deg); }
+  .slice { position: absolute; left: -110px; top: -80px; width: 220px; height: 160px; border: 1px solid rgba(20,33,61,.45); background: #fff; opacity: .28; transition: opacity .35s, transform .35s, box-shadow .35s; }
+  .slice.active { opacity: 1; box-shadow: 0 0 0 3px var(--ink); }
+  .slider-row { width: min(100%, 360px); }
+  .slider-label { display: flex; justify-content: space-between; font-size: .9rem; font-weight: 600; margin-bottom: 6px; }
+  .slider-label span:last-child { color: var(--ink-soft); font-weight: 500; }
+  input[type=range] { width: 100%; accent-color: var(--ink); height: 32px; cursor: pointer; }
+  .legend { display: flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--ink-soft); font-family: var(--display); }
+  .legend i { display: block; width: 120px; height: 10px; border-radius: 2px; background: linear-gradient(90deg, var(--z1), var(--z2), var(--z3), var(--z4), var(--z5)); }
+  .cube-caption { max-width: 38ch; text-align: center; font-size: .95rem; color: var(--ink-soft); }
+
+  /* sections */
+  section.block { padding: 96px 0; border-top: 1px solid var(--rule); }
+  .head { display: grid; grid-template-columns: 300px 1fr; gap: 48px; margin-bottom: 52px; }
+  h2 { font-weight: 800; font-stretch: 75%; font-size: clamp(2.4rem, 5vw, 3.8rem); line-height: .95; text-transform: uppercase; }
+  .head p { max-width: 58ch; color: var(--ink-soft); align-self: end; }
+
+  /* featured research */
+  .feature { display: grid; grid-template-columns: 300px 1fr; gap: 48px; padding: 40px 0; border-top: 1px solid var(--rule); }
+  .feature:first-of-type { border-top: 0; padding-top: 0; }
+  .feature h3 { font-weight: 800; font-stretch: 100%; font-size: 2rem; line-height: 1.05; }
+  .tag { display: inline-block; margin-top: 12px; font-size: .85rem; font-weight: 600; padding: 4px 10px; border-radius: 4px; background: var(--ink); color: var(--paper); }
+  .tag.soft { background: var(--paper-2); color: var(--ink); }
+  .feature .lead { font-size: 1.2rem; max-width: 54ch; }
+  .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 26px 0; }
+  .facts div { border-left: 4px solid var(--z3); padding-left: 14px; }
+  .facts div:nth-child(2) { border-color: var(--z4); }
+  .facts div:nth-child(3) { border-color: var(--z5); }
+  .facts b { display: block; font-family: var(--display); font-weight: 700; font-size: 1.5rem; line-height: 1.1; }
+  .facts span { font-size: .95rem; color: var(--ink-soft); }
+  .feature ul { padding-left: 1.2em; max-width: 62ch; }
+  .feature li + li { margin-top: 6px; }
+  .stackline { margin-top: 18px; font-family: var(--display); font-size: .95rem; color: var(--ink-soft); }
+
+  /* publications */
+  .pubs { list-style: none; counter-reset: pub; }
+  .pubs li { display: grid; grid-template-columns: 300px 1fr; gap: 48px; padding: 22px 0; border-top: 1px solid var(--rule); }
+  .pubs .venue { font-family: var(--display); font-weight: 600; }
+  .pubs .venue small { display: block; font-weight: 500; color: var(--ink-soft); font-size: .9rem; }
+  .pubs .title { font-weight: 600; }
+  .pubs .authors { color: var(--ink-soft); font-size: 1rem; }
+  .pubs .authors b { color: var(--ink); }
+
+  /* experience */
+  .timeline { list-style: none; }
+  .timeline li { display: grid; grid-template-columns: 300px 1fr; gap: 48px; padding: 26px 0; border-top: 1px solid var(--rule); }
+  .timeline .when { font-family: var(--display); font-weight: 600; }
+  .timeline .when small { display: block; color: var(--ink-soft); font-weight: 500; font-size: .9rem; }
+  .timeline h3 { font-weight: 700; font-size: 1.3rem; }
+  .timeline p { color: var(--ink-soft); max-width: 62ch; margin-top: 4px; }
+
+  /* other projects */
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--rule); border-left: 1px solid var(--rule); }
+  .proj { padding: 26px 24px 28px; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); display: flex; flex-direction: column; gap: 8px; }
+  .proj h3 { font-weight: 700; font-size: 1.2rem; line-height: 1.2; }
+  .proj p { font-size: 1rem; color: var(--ink-soft); flex: 1; }
+  .proj .meta { font-size: .85rem; font-weight: 600; display: flex; justify-content: space-between; gap: 12px; }
+  .proj .meta span { color: var(--ink-soft); font-weight: 500; }
+
+  /* skills + beyond */
+  .two { display: grid; grid-template-columns: 300px 1fr; gap: 48px; }
+  .skills { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 48px; }
+  .skills h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+  .skills p { color: var(--ink-soft); font-size: 1rem; }
+
+  /* contact */
+  .contact { background: var(--ink); color: var(--paper); padding: 104px 0 64px; }
+  .contact h2 { font-size: clamp(2.8rem, 7vw, 5.6rem); }
+  .contact p { max-width: 50ch; margin-top: 20px; color: #C9D3E0; }
+  .contact .links { display: flex; flex-wrap: wrap; gap: 14px 32px; margin-top: 36px; font-family: var(--display); font-weight: 600; font-size: 1.2rem; }
+  .contact a { color: var(--paper); }
+  .contact a:hover { color: var(--z3); }
+  .foot { margin-top: 80px; font-size: .9rem; color: #93A1B6; font-family: var(--display); }
+
+  @media (max-width: 900px) {
+    .hero, .head, .feature, .pubs li, .timeline li, .two { grid-template-columns: 1fr; gap: 20px; }
+    .hero { padding-top: 24px; }
+    .grid { grid-template-columns: 1fr 1fr; }
+    .head { margin-bottom: 36px; }
+  }
+  @media (max-width: 600px) {
+    .wrap { padding: 0 16px; }
+    .nav ul { gap: 16px; }
+    .nav ul li:nth-child(n+3) { display: none; }
+    .grid, .skills, .facts { grid-template-columns: 1fr; }
+    .stack { transform: scale(.85); height: 290px; }
+    section.block { padding: 72px 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .slice { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="wrap nav">
+  <a href="#top">Jaysheel Golani</a>
+  <nav aria-label="Sections">
+    <ul>
+      <li><a href="#research">Research</a></li>
+      <li><a href="#publications">Papers</a></li>
+      <li><a href="#experience">Experience</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <h1>Jaysheel<br>Golani</h1>
+      <p class="hero-line">I turn terabytes of satellite rain data into something you can query in seconds.</p>
+      <p class="sub">Senior Research Fellow at IIT Hyderabad. I build analysis-ready datacubes for INSAT-3DR and GPM radar observations, and apply machine learning to rainfall and lightning nowcasting over India.</p>
+      <div class="hero-links">
+        <a class="btn primary" href="#research">See the research</a>
+        <a class="btn ghost" href="https://github.com/Jaysheel11">GitHub</a>
+      </div>
+    </div>
+
+    <div class="cube-panel">
+      <div class="stack" aria-hidden="true"><div class="stack-inner" id="stack"></div></div>
+      <div class="slider-row">
+        <label class="slider-label" for="t"><span>Slice the cube in time</span><span id="t-out">00:00 UTC</span></label>
+        <input id="t" type="range" min="0" max="7" value="0" step="1">
+      </div>
+      <div class="legend"><span>light</span><i></i><span>heavy rain</span></div>
+      <p class="cube-caption">A datacube stacks a satellite's images through time so any slice is one query away. This storm is simulated for illustration.</p>
+    </div>
+  </section>
+
+  <section class="block" id="research">
+    <div class="wrap">
+      <div class="head">
+        <h2>Research</h2>
+        <p>Satellite archives arrive as thousands of separate files in different shapes. My work makes them one queryable structure, so scientists can slice, aggregate and compare storms without writing new preprocessing scripts each time.</p>
+      </div>
+
+      <article class="feature">
+        <div>
+          <h3>PrecipCube</h3>
+          <span class="tag">Manuscript in preparation</span>
+        </div>
+        <div>
+          <p class="lead">A multi-satellite datacube platform that lets a geostationary imager and a space-borne radar be explored side by side, in one web interface.</p>
+          <div class="facts">
+            <div><b>~3.6 TB</b><span>INSAT-3DR and GPM-DPR data</span></div>
+            <div><b>2020–2025</b><span>Monsoon seasons over India</span></div>
+            <div><b>2 sensors</b><span>Matched through one index</span></div>
+          </div>
+          <ul>
+            <li>Each archive stays in its native layout and is registered with a configuration file, so new sensors plug in without rewriting the platform.</li>
+            <li>A lightweight matched-observation index collocates passive and active sensor readings and fetches the matching measurements on demand.</li>
+            <li>Slicing, dicing, roll-up, drill-down and drill-across queries, event detection, cross-sections and export, all from the browser.</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="feature">
+        <div>
+          <h3>GPMKUBE</h3>
+          <span class="tag">IEEE IGARSS 2026 · oral</span>
+        </div>
+        <div>
+          <p class="lead">A visual-analytical framework for the GPM Dual-frequency Precipitation Radar, built to look inside storms layer by layer.</p>
+          <div class="facts">
+            <div><b>~3 TB</b><span>Orbit-based HDF5 swaths processed</span></div>
+            <div><b>~23%</b><span>Smaller on disk as chunked Zarr</span></div>
+            <div><b>3D</b><span>Vertical precipitation profiles</span></div>
+          </div>
+          <ul>
+            <li>Converted Level-2 Ku-band radar swaths into optimized multidimensional Zarr datasets.</li>
+            <li>OLAP operations for dicing, roll-up, cross-section extraction and threshold-based event detection.</li>
+            <li>Interactive views of radar reflectivity and storm structure, tuned with chunking strategies for fast queries.</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="feature">
+        <div>
+          <h3>INSATCUBE</h3>
+          <span class="tag">IEEE InGARSS 2025 · oral</span>
+        </div>
+        <div>
+          <p class="lead">A scalable, analysis-ready datacube for India's INSAT-3DR geostationary satellite.</p>
+          <ul>
+            <li>Turned high-frequency INSAT HDF5 imagery into multidimensional HDF5 and cloud-optimized Zarr cubes.</li>
+            <li>Built preprocessing for calibration, coordinate transformation and analysis-ready products.</li>
+            <li>Slicing, dicing, roll-up and extreme-event analysis for meteorological studies, and ML/DL rainfall nowcasting from INSAT-3DR bands.</li>
+          </ul>
+          <p class="stackline">Python · Xarray · Zarr · HDF5 · Dask · machine learning</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="block" id="publications">
+    <div class="wrap">
+      <div class="head">
+        <h2>Papers</h2>
+        <p>Two first-author conference papers on satellite datacubes, and two journal papers applying machine learning to predict the behaviour of optical sensors.</p>
+      </div>
+      <ol class="pubs">
+        <li>
+          <div class="venue">IEEE IGARSS 2026<small>Accepted, oral presentation in August 2026</small></div>
+          <div><p class="title">GPMKUBE: A Visual-Analytical Framework for GPM-DPR Ku-Band Observations</p>
+          <p class="authors"><b>Jaysheel Golani</b>, Hari Priyanka Allam, Kuldeep Ramchandra Kurte, Malarvizhi Arulraj, Shruti Upadhyaya</p></div>
+        </li>
+        <li>
+          <div class="venue">IEEE InGARSS 2025<small>Accepted, oral presentation delivered</small></div>
+          <div><p class="title">INSATCUBE: Scalable Analysis-Ready Datacube for INSAT-3DR Satellite Observations</p>
+          <p class="authors"><b>Jaysheel Golani</b>, Hari Priyanka Allam, Shruti Upadhyaya, Kuldeep Ramchandra Kurte</p></div>
+        </li>
+        <li>
+          <div class="venue">Plasmonics, Springer Nature<small>2024</small></div>
+          <div><p class="title"><a href="https://doi.org/10.1007/s11468-024-02548-2">Multilayered MXene and GST Material-Based Refractive Index Sensor: Numerical Study and Prediction of Behaviour Using Machine Learning</a></p>
+          <p class="authors">Abdulkarem H. M. Almawgani, Vishal Sorathiya, Umang Soni, <b>Jaysheel Golani</b>, Yahya Ali Abdelrahman Ali</p></div>
+        </li>
+        <li>
+          <div class="venue">Plasmonics, Springer Nature<small>2023</small></div>
+          <div><p class="title"><a href="https://doi.org/10.1007/s11468-023-02073-8">Borophene-Ge2Sb2Te5 (GST)-Based Refractive Index Sensor: Numerical Study and Behaviour Prediction Using Machine Learning</a></p>
+          <p class="authors">Vishal Sorathiya, Umangbhai Soni, Vipul Vekariya, <b>Jaysheel Golani</b>, Abdulkarem H. M. Almawgani, Adam R. H. Alhawari</p></div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="block" id="experience">
+    <div class="wrap">
+      <div class="head">
+        <h2>Experience</h2>
+        <p>From industry training programmes to space research, most recent first.</p>
+      </div>
+      <ol class="timeline">
+        <li>
+          <div class="when">Sep 2024 – now<small>Hyderabad</small></div>
+          <div><h3>Senior Research Fellow, IIT Hyderabad</h3>
+          <p>Building INSATCUBE, GPMKUBE and the multi-satellite PrecipCube platform. Applying ML and deep learning to rainfall nowcasting from INSAT-3DR bands.</p></div>
+        </li>
+        <li>
+          <div class="when">Jan – Apr 2024<small>Ahmedabad</small></div>
+          <div><h3>Research Intern, Space Applications Centre, ISRO</h3>
+          <p>Analysed meteorological and oceanographic data, built an algorithm to make raw data analysis-ready, and worked on lightning nowcasting 1–2 hours ahead of events.</p></div>
+        </li>
+        <li>
+          <div class="when">May – Jun 2023<small>Remote</small></div>
+          <div><h3>Trainee, Future Ready Talent (Microsoft)</h3>
+          <p>Built a website for the Indian medical sector on Azure, alongside Microsoft Learn courses in cloud and data analysis.</p></div>
+        </li>
+        <li>
+          <div class="when">Feb – May 2023<small>Vadodara</small></div>
+          <div><h3>Trainee, SAP Code Unnati</h3>
+          <p>Industry 4.0 training. Built real-time face blurring and age/gender detection, and benchmarked Rust against Python, finding up to 10× faster runs in Rust.</p></div>
+        </li>
+        <li>
+          <div class="when">Graduated 2024<small>Vadodara</small></div>
+          <div><h3>B.Tech in Computer Science (AI), Parul University</h3>
+          <p>Coursework in machine learning, artificial intelligence, probability and statistics, numerical methods and data visualization.</p></div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="block" id="projects">
+    <div class="wrap">
+      <div class="head">
+        <h2>More builds</h2>
+        <p>Smaller projects in computer vision, machine learning and data analysis. Most have code on GitHub.</p>
+      </div>
+      <div class="grid">
+        <div class="proj"><h3>Integrated Security System</h3><p>Face recognition, automatic number-plate recognition, a blockchain log for tamper-proof records and a natural-language interface in one prototype.</p><div class="meta">Deep learning · NLP</div></div>
+        <div class="proj"><h3>Real-time face blurring</h3><p>Detects faces in a live webcam feed and blurs them as they move.</p><div class="meta"><a href="https://github.com/Jaysheel11/Real-time-face-blurring">Code</a><span>OpenCV</span></div></div>
+        <div class="proj"><h3>Rock vs mine detection</h3><p>Classifies sonar signals as either rock or underwater mine using machine learning.</p><div class="meta"><a href="https://github.com/Jaysheel11/MLRockvsMinedetection">Code</a><span>ML</span></div></div>
+        <div class="proj"><h3>Breast cancer classification</h3><p>Compares several machine learning models for classifying tumours as benign or malignant.</p><div class="meta"><a href="https://github.com/Jaysheel11/Breast-Cancer-Classification-Using-Machine-Learning-Models">Code</a><span>ML</span></div></div>
+        <div class="proj"><h3>Movie recommender</h3><p>Suggests similar films using a bag-of-words model.</p><div class="meta"><a href="https://github.com/Jaysheel11/Movie_Recommendation_System">Code</a><span>NLP</span></div></div>
+        <div class="proj"><h3>Diwali sales analysis</h3><p>Found that women bought 50% more than men, with Uttarakhand leading sales and IT and health as top sectors.</p><div class="meta"><a href="https://github.com/Jaysheel11/Sales_analysis">Code</a><span>Pandas</span></div></div>
+        <div class="proj"><h3>IPL 2023 analysis</h3><p>Exploratory analysis of the 2023 season to surface team and player trends.</p><div class="meta"><a href="https://github.com/Jaysheel11/IPL2023_Analysis">Code</a><span>EDA</span></div></div>
+        <div class="proj"><h3>Company data scraper</h3><p>Scrapes company ratings and details from AmbitionBox into a clean table for analysis.</p><div class="meta"><a href="https://github.com/Jaysheel11/Web_Scraping_using_Beautifulsoup">Code</a><span>BeautifulSoup</span></div></div>
+        <div class="proj"><h3>Edge detection and convolution</h3><p>Canny edge detection with adjustable thresholds, and image convolution with a set of classic kernels.</p><div class="meta"><a href="https://github.com/Jaysheel11/Edge-Detection-with-Canny-Algorithm---OpenCV-Python">Code</a><span>OpenCV</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="skills">
+    <div class="wrap two">
+      <h2>Toolkit</h2>
+      <div class="skills">
+        <div><h3>Languages</h3><p>Python, C, SQL</p></div>
+        <div><h3>Satellite data</h3><p>HDF5, Zarr, NetCDF, datacubes, OLAP queries, spatiotemporal analysis</p></div>
+        <div><h3>Machine learning</h3><p>Deep learning, computer vision, NLP, nowcasting</p></div>
+        <div><h3>Data</h3><p>Analysis, visualization, web scraping</p></div>
+        <div><h3>Certifications</h3><p>Microsoft Azure AI Fundamentals, Azure Data Fundamentals, Power Platform Fundamentals; NPTEL Internet of Things (gold medal); Coursera Supervised Machine Learning</p></div>
+        <div><h3>Off the keyboard</h3><p>State medallist in skating who represented Gujarat at nationals, silver at the mixed martial arts nationals, and best campaigner among 50 for Gujarat's largest tech fest.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="contact" id="contact">
+  <div class="wrap">
+    <h2>Let's talk</h2>
+    <p>I'm interested in research roles and collaborations in remote sensing, climate data and applied machine learning.</p>
+    <div class="links">
+      <a href="mailto:jaysheel.golani@ce.iith.ac.in">jaysheel.golani@ce.iith.ac.in</a>
+      <a href="https://github.com/Jaysheel11">GitHub</a>
+    </div>
+    <p class="foot">© 2026 Jaysheel Golani</p>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const N = 8, W = 110, H = 80, GAP = 26;
+  const stack = document.getElementById("stack");
+  const slider = document.getElementById("t");
+  const out = document.getElementById("t-out");
+  const ramp = [[143,211,244],[44,156,90],[242,209,58],[238,138,43],[215,48,42]];
+
+  function color(v) {
+    if (v < 0.12) return null;
+    const x = Math.min(0.999, (v - 0.12) / 0.88) * (ramp.length - 1);
+    const i = Math.floor(x), f = x - i, a = ramp[i], b = ramp[i + 1];
+    return [0,1,2].map(k => Math.round(a[k] + (b[k] - a[k]) * f));
+  }
+
+  // simulated monsoon storm: cells drift north-west and grow, then decay
+  function field(t, x, y) {
+    const cells = [
+      { x: 0.25 + t * 0.07, y: 0.70 - t * 0.05, r: 0.10 + t * 0.012, a: 0.6 + 0.5 * Math.sin(t / 2.2) },
+      { x: 0.60 + t * 0.03, y: 0.35 + t * 0.03, r: 0.14, a: 0.9 - t * 0.06 },
+      { x: 0.80 - t * 0.04, y: 0.75 - t * 0.02, r: 0.07 + t * 0.008, a: 0.3 + t * 0.09 }
+    ];
+    let v = 0;
+    for (const c of cells) {
+      const dx = (x - c.x) * 1.4, dy = y - c.y;
+      v += c.a * Math.exp(-(dx * dx + dy * dy) / (2 * c.r * c.r));
+    }
+    v += 0.06 * Math.sin(x * 23 + t) * Math.sin(y * 19 - t * 0.7);
+    return v;
+  }
+
+  const slices = [];
+  for (let t = 0; t < N; t++) {
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H; c.className = "slice";
+    c.style.transform = `translateZ(${(t - (N - 1) / 2) * GAP}px)`;
+    const ctx = c.getContext("2d"), img = ctx.createImageData(W, H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4, col = color(field(t, x / W, y / H));
+      if (col) { img.data[i] = col[0]; img.data[i+1] = col[1]; img.data[i+2] = col[2]; img.data[i+3] = 255; }
+      else { img.data[i] = 247; img.data[i+1] = 249; img.data[i+2] = 251; img.data[i+3] = 255; }
+    }
+    ctx.putImageData(img, 0, 0);
+    stack.appendChild(c);
+    slices.push(c);
+  }
+
+  function show(t) {
+    slices.forEach((s, i) => s.classList.toggle("active", i === t));
+    out.textContent = String(t * 3).padStart(2, "0") + ":00 UTC";
+  }
+  slider.addEventListener("input", () => { stopIntro(); show(+slider.value); });
+  show(0);
+
+  // one intro sweep through time, then hand control to the visitor
+  let timer = null;
+  function stopIntro() { if (timer) { clearInterval(timer); timer = null; } }
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    let t = 0;
+    timer = setInterval(() => {
+      t++;
+      if (t >= N) { stopIntro(); return; }
+      slider.value = t; show(t);
+    }, 450);
+  }
+})();
+</script>
+</body>
+</html>
