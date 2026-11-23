@@ -343,8 +343,15 @@
   function drawFrame() {
     if (!cube.overlay) return;
     const { nx, ny } = cube.meta, N = nx * ny, get = getter(cube.varKey), d = cube.overlay.img.data, t = cube.t;
+    // with a box drawn, only the pixels inside it are shown (the subset being queried)
+    const r = cube.box && !cube.probe ? boxRange(cube.box) : { i0: 0, i1: nx - 1, j0: 0, j1: ny - 1 };
+    r.clip = r.i0 > 0 || r.j0 > 0 || r.i1 < nx - 1 || r.j1 < ny - 1;
     for (let i = 0; i < N; i++) {
-      const c = cmap(cube.varKey, get(t, i)), j = i * 4;
+      const x = i % nx, y = (i - x) / nx, j = i * 4;
+      if (x < r.i0 || x > r.i1 || y < r.j0 || y > r.j1) { d[j + 3] = 0; continue; }
+      const v = get(t, i);
+      let c = cmap(cube.varKey, v);
+      if (r.clip && v === v && c[3] < 70) c = c[3] ? [c[0], c[1], c[2], 70] : [40, 58, 92, 70]; // keep clear sky inside the box visible
       d[j] = c[0]; d[j + 1] = c[1]; d[j + 2] = c[2]; d[j + 3] = c[3];
     }
     cube.overlay.ctx.putImageData(cube.overlay.img, 0, 0);
@@ -353,6 +360,11 @@
 
   const ix = lon => Math.floor((lon - cube.meta.lon0) / cube.meta.res);
   const iy = lat => Math.floor((cube.meta.lat1 - lat) / cube.meta.res);
+  const boxRange = b => {
+    const m = cube.meta;
+    return { j0: clamp(iy(b.lat1), 0, m.ny - 1), j1: clamp(iy(b.lat0 - 1e-9), 0, m.ny - 1),
+             i0: clamp(ix(b.lon0), 0, m.nx - 1), i1: clamp(ix(b.lon1 - 1e-9), 0, m.nx - 1) };
+  };
   const inCube = (lat, lng) => cube.meta && lat >= cube.meta.lat0 && lat <= cube.meta.lat1 && lng >= cube.meta.lon0 && lng <= cube.meta.lon1;
   const unit = () => ({ TIR1: "K", TIR2: "K", WV: "K", MIR: "K", VIS: "%", SPLIT: "K", GPI: "mm/h" })[cube.varKey];
   const fmtV = v => v !== v ? "no data" : `${cube.varKey === "GPI" ? v.toFixed(2) : v.toFixed(1)} ${unit()}`;
@@ -366,9 +378,7 @@
     if (cube.probe) {
       cells = [iy(cube.probe.lat) * nx + ix(cube.probe.lng)];
     } else {
-      const b = cube.box;
-      const j0 = clamp(iy(b.lat1), 0, m.ny - 1), j1 = clamp(iy(b.lat0 - 1e-9), 0, m.ny - 1);
-      const i0 = clamp(ix(b.lon0), 0, nx - 1), i1 = clamp(ix(b.lon1 - 1e-9), 0, nx - 1);
+      const { i0, i1, j0, j1 } = boxRange(cube.box);
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) cells.push(j * nx + i);
     }
     // per-time mean (the chart) and current-time stats
@@ -463,6 +473,7 @@
   }
   function refreshBox() {
     if (!globe) return;
+    if (mode === "cube" && cube.ready) drawFrame();
     if (mode !== "cube" || !cube.box || cube.probe) { globe.polygonsData([]); return; }
     globe.polygonsData([{ geometry: { type: "Polygon", coordinates: [boxRing(cube.box)] } }]);
   }
@@ -948,7 +959,8 @@
     }
     if (mode !== "cube" || !cube.ready || ev.pointerType === "touch") return;
     const c = globeCoords(ev);
-    if (!c || !inCube(c.lat, c.lng)) { $("probe").textContent = ""; return; }
+    const inBox = !cube.box || cube.probe || (c && c.lat >= cube.box.lat0 && c.lat <= cube.box.lat1 && c.lng >= cube.box.lon0 && c.lng <= cube.box.lon1);
+    if (!c || !inCube(c.lat, c.lng) || !inBox) { $("probe").textContent = ""; return; }
     const v = getter(cube.varKey)(cube.t, iy(c.lat) * cube.meta.nx + ix(c.lng));
     $("probe").textContent = `${fmtLL(c.lat, c.lng, 2)} · ${fmtV(v)}`;
   });
