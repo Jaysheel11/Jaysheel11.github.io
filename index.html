@@ -400,13 +400,15 @@
           <div><dt>GPM altitude and speed</dt><dd id="r-alt">–</dd></div>
           <div><dt>GPM's next pass over India</dt><dd id="r-next">–</dd></div>
           <div><dt>Indian cities with rain right now</dt><dd id="r-rain">–</dd></div>
+          <div><dt>Latest INSAT rain map (ISRO)</dt><dd id="r-isro">–</dd></div>
           <div><dt>Latest Meteosat image over India</dt><dd id="r-msg">–</dd></div>
           <div><dt>Active tropical cyclones</dt><dd id="r-tc">–</dd></div>
         </dl>
         <fieldset class="chips" id="layers">
           <legend>Show on the globe</legend>
           <label><input type="checkbox" id="lay-clouds" checked> <span>Live clouds</span></label>
-          <label><input type="checkbox" id="lay-hsaf" checked> <span>Live rain rate</span></label>
+          <label><input type="checkbox" id="lay-isro" checked> <span>INSAT rain (ISRO)</span></label>
+          <label><input type="checkbox" id="lay-hsaf"> <span>Meteosat rain (EUMETSAT)</span></label>
           <label><input type="checkbox" id="lay-tc" checked> <span>Cyclones</span></label>
           <label><input type="checkbox" id="lay-swarm" checked> <span>All weather satellites <b id="swarm-n"></b></span></label>
           <label><input type="checkbox" id="lay-path" checked> <span>GPM's next orbit</span></label>
@@ -513,7 +515,7 @@
         <span><i class="dot"></i>Weather satellites</span>
         <span><i class="tc"></i>Cyclone track</span>
         <span><i class="rain"></i>Rain now at 10 cities</span>
-        <small>Clouds: Meteosat-9 infrared; rain rate: EUMETSAT H SAF (© EUMETSAT, refreshed every 15 min). Cyclones: GDACS. Orbits: CelesTrak, updated every second. City rain: Open-Meteo. Geostationary satellites are drawn closer than real scale.</small>
+        <small>INSAT rain: Hydro-Estimator from INSAT-3DR/3DS, MOSDAC, SAC/ISRO, copied twice an hour; hover the globe for mm/h. Clouds: Meteosat-9 infrared; Meteosat rain: EUMETSAT H SAF (© EUMETSAT, refreshed every 15 min). Cyclones: GDACS. Orbits: CelesTrak, updated every second. City rain: Open-Meteo. Geostationary satellites are drawn closer than real scale.</small>
       </div>
       <div class="globe-key" id="key-gpm" hidden>
         <span class="bar"><b>0.5</b><i id="kg-bar"></i><b>50+ mm/h</b></span>
@@ -835,6 +837,6 @@
 
 <script src="https://unpkg.com/globe.gl@2.46.1/dist/globe.gl.min.js"></script>
 <script src="https://unpkg.com/satellite.js@5.0.0/dist/satellite.min.js"></script>
-<script src="globe.js?v=4"></script>
+<script src="globe.js?v=5"></script>
 </body>
 </html>

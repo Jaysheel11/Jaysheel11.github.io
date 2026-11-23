@@ -57,7 +57,7 @@
   };
   const sats = [];          // {id, name, color, main, rec, lat, lng, alt, km, speed}
   let selected = null, following = false;
-  const show = { swarm: true, path: true, rain: true, clouds: true, hsaf: true, tc: true };
+  const show = { swarm: true, path: true, rain: true, clouds: true, isro: true, hsaf: false, tc: true };
   const liveTiles = {};   // clouds, hsaf -> tile datum
   const cyclones = [];    // {name, lat, lng, alt, el, tracks: [[lat,lng]...], text, url}
 
@@ -162,7 +162,7 @@
   function refreshTiles() {
     if (!globe) return;
     let t = [];
-    if (mode === "live") t = ["clouds", "hsaf"].filter(k => show[k] && liveTiles[k]).map(k => liveTiles[k]);
+    if (mode === "live") t = ["clouds", "isro", "hsaf"].filter(k => show[k] && liveTiles[k]).map(k => liveTiles[k]);
     else if (mode === "cube" && cube.tile) t = cube.tile;
     else if (mode === "gpm" && gpm.tile) t = gpm.tile;
     globe.tilesData(t);
@@ -628,6 +628,45 @@
     } else $("r-msg").textContent = "Unavailable";
   }
 
+  /* INSAT-3DR / 3DS Hydro-Estimator rain from MOSDAC Live (SAC/ISRO). MOSDAC's server blocks
+     cross-site image loads, so .github/workflows/mosdac.yml copies the newest map to the
+     live-data branch twice an hour as a greyscale PNG (grey level = mm/h / scale). */
+  const ISRO = "https://raw.githubusercontent.com/Jaysheel11/Jaysheel11.github.io/live-data/";
+  const isro = { meta: null, vals: null };
+  const ago = t => { const m = Math.round((Date.now() - new Date(t)) / 60000); return m < 90 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
+  const hhmm = t => { const d = new Date(t); return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`; };
+  async function loadIsro() {
+    const meta = await (await fetch(ISRO + "hem.json", { cache: "no-cache" })).json();
+    if (isro.meta && isro.meta.time === meta.time) { $("r-isro").textContent = `${hhmm(meta.time)}, ${meta.satellite}, ${ago(meta.time)}`; return; }
+    const blob = await (await fetch(ISRO + "hem.png", { cache: "no-cache" })).blob();
+    const src = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+    const W = meta.width, H = meta.height, c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const x = c.getContext("2d", { willReadFrequently: true });
+    x.drawImage(src, 0, 0);
+    const id = x.getImageData(0, 0, W, H), d = id.data, vals = new Uint8Array(W * H), top = Math.log1p(40);
+    for (let i = 0, j = 0; i < vals.length; i++, j += 4) {
+      const g = vals[i] = d[j], mm = g * meta.scale;
+      if (mm < 0.5) { d[j + 3] = 0; continue; }
+      const col = rampAt(RAMP_RGB, 0.1 + 0.9 * Math.log1p(mm) / top);
+      d[j] = col[0]; d[j + 1] = col[1]; d[j + 2] = col[2]; d[j + 3] = 170 + Math.min(mm, 20) * 4;
+    }
+    x.putImageData(id, 0, 0);
+    isro.meta = meta; isro.vals = vals;
+    $("r-isro").textContent = `${hhmm(meta.time)}, ${meta.satellite}, ${ago(meta.time)}`;
+    if (!(await ready3())) return;
+    const b = meta.bbox, prev = liveTiles.isro, { mat } = canvasMat(c);
+    liveTiles.isro = { lat: (b.lat0 + b.lat1) / 2, lng: (b.lon0 + b.lon1) / 2, w: b.lon1 - b.lon0, h: b.lat1 - b.lat0, alt: 0.0085, mat };
+    if (prev) { prev.mat.map.dispose(); prev.mat.dispose(); }
+    refreshTiles();
+  }
+  function isroAt(lat, lng) { // rain rate in mm/h at a point, or null outside the map
+    const m = isro.meta; if (!m || !isro.vals) return null;
+    const b = m.bbox, i = Math.floor((lng - b.lon0) / (b.lon1 - b.lon0) * m.width), j = Math.floor((b.lat1 - lat) / (b.lat1 - b.lat0) * m.height);
+    if (i < 0 || j < 0 || i >= m.width || j >= m.height) return null;
+    return isro.vals[j * m.width + i] * m.scale;
+  }
+
   async function loadCyclones() {
     const list = await (await fetch("https://www.gdacs.org/gdacsapi/api/events/geteventlist/EVENTS4APP")).json();
     const tcs = list.features.filter(f => f.properties.eventtype === "TC" && String(f.properties.iscurrent) === "true");
@@ -902,6 +941,11 @@
       if (c) { cube.box = { lat0: Math.min(dragStart.lat, c.lat), lat1: Math.max(dragStart.lat, c.lat), lon0: Math.min(dragStart.lng, c.lng), lon1: Math.max(dragStart.lng, c.lng) }; cube.probe = null; refreshBox(); }
       return;
     }
+    if (mode === "live" && show.isro && isro.vals && ev.pointerType !== "touch") {
+      const c = globeCoords(ev), v = c && isroAt(c.lat, c.lng);
+      $("probe").textContent = v == null ? "" : `${fmtLL(c.lat, c.lng, 1)} · INSAT rain ${v < 0.5 ? "none" : v >= 49.9 ? "50+ mm/h" : v.toFixed(1) + " mm/h"}`;
+      return;
+    }
     if (mode !== "cube" || !cube.ready || ev.pointerType === "touch") return;
     const c = globeCoords(ev);
     if (!c || !inCube(c.lat, c.lng)) { $("probe").textContent = ""; return; }
@@ -964,7 +1008,7 @@
     e.currentTarget.setAttribute("aria-pressed", String(following));
     e.currentTarget.textContent = following ? "Following. Click to stop" : "Follow it";
   });
-  [["lay-swarm", "swarm"], ["lay-path", "path"], ["lay-rain", "rain"], ["lay-clouds", "clouds"], ["lay-hsaf", "hsaf"], ["lay-tc", "tc"]].forEach(([id, k]) => {
+  [["lay-swarm", "swarm"], ["lay-path", "path"], ["lay-rain", "rain"], ["lay-clouds", "clouds"], ["lay-isro", "isro"], ["lay-hsaf", "hsaf"], ["lay-tc", "tc"]].forEach(([id, k]) => {
     $(id).addEventListener("change", e => { show[k] = e.target.checked; refreshSats(); refreshPaths(); refreshPoints(); refreshTiles(); });
   });
 
@@ -1028,6 +1072,12 @@
   if (globe) {
     loadLiveLayers().catch(() => { $("r-msg").textContent = "Unavailable"; });
     setInterval(() => loadLiveLayers().catch(() => {}), 15 * 60e3);
+    const isroFail = () => { // fall back to the EUMETSAT rain layer if the ISRO copy is missing
+      $("r-isro").textContent = "Unavailable";
+      if (!liveTiles.isro && !show.hsaf) { show.hsaf = true; $("lay-hsaf").checked = true; refreshTiles(); }
+    };
+    loadIsro().catch(isroFail);
+    setInterval(() => loadIsro().catch(() => {}), 10 * 60e3);
   }
   loadCyclones().catch(() => { $("r-tc").textContent = "Unavailable"; });
   setInterval(() => loadRain().catch(() => {}), 10 * 60e3);

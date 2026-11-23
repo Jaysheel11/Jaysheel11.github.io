@@ -1,0 +1,47 @@
+# Twice an hour, copy the newest INSAT rain map from MOSDAC Live to the `live-data` branch.
+# MOSDAC's server does not let other websites load its images directly, so the globe reads
+# this copy instead (raw.githubusercontent.com allows that). The branch is replaced on every
+# run, so it always holds a single small commit and the repository does not grow.
+name: MOSDAC live rain
+
+on:
+  schedule:
+    - cron: "8,38 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mosdac-live
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet pillow==11.0.0
+      - run: python scripts/fetch_mosdac.py out
+      - name: Publish to the live-data branch
+        working-directory: out
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat > README.md <<'EOF'
+          Latest INSAT-3DR / INSAT-3DS Hydro-Estimator rain map, copied from MOSDAC Live
+          (MOSDAC, SAC/ISRO) by .github/workflows/mosdac.yml on the main branch.
+          This branch is overwritten twice an hour.
+          EOF
+          git init -q -b live-data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "MOSDAC rain map $(python -c 'import json;print(json.load(open("hem.json"))["time"])')"
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" live-data
