@@ -61,16 +61,24 @@
   const liveTiles = {};   // clouds, hsaf -> tile datum
   const cyclones = [];    // {name, lat, lng, alt, el, tracks: [[lat,lng]...], text, url}
 
+  // Orbit data is cached for 6 h (CelesTrak asks clients not to re-download unchanged data).
+  // Only real TLE text is cached; if a fresh download fails, an older cached copy is used.
   async function cachedText(key, url) {
+    key = "tle2-" + key;
+    let old = null;
+    try { old = JSON.parse(localStorage.getItem(key) || "null"); } catch (e) {}
+    const valid = t => typeof t === "string" && /^1 /m.test(t);
+    if (old && valid(old.txt) && Date.now() - old.t < 6 * 3600e3) return old.txt;
     try {
-      const c = JSON.parse(localStorage.getItem(key) || "null");
-      if (c && Date.now() - c.t < 6 * 3600e3) return c.txt;
+      const r = await fetch(url);
+      const txt = r.ok ? await r.text() : "";
+      if (valid(txt)) {
+        try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), txt })); } catch (e) {}
+        return txt;
+      }
     } catch (e) {}
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(r.status);
-    const txt = await r.text();
-    try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), txt })); } catch (e) {}
-    return txt;
+    if (old && valid(old.txt)) return old.txt;
+    throw new Error("no orbit data");
   }
   function parseTLE(txt) {
     const L = txt.trim().split(/\r?\n/).map(s => s.trim()), out = [];
