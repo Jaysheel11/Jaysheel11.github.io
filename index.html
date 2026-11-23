@@ -19,9 +19,11 @@
     /* radar reflectivity ramp, used only for data */
     --z1: #8FD3F4; --z2: #2C9C5A; --z3: #F2D13A; --z4: #EE8A2B; --z5: #D7302A;
     --display: "Archivo", system-ui, sans-serif;
+    --ease-scan: cubic-bezier(.65,0,.25,1); --ease-out: cubic-bezier(.2,.7,.2,1);
     --body: "Source Serif 4", Georgia, serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
   html { scroll-behavior: smooth; }
   body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 1.1rem; line-height: 1.65; }
   a { color: var(--link); text-underline-offset: 3px; }
@@ -39,15 +41,30 @@
 
   /* hero */
   .hero { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; padding: 56px 0 104px; }
-  h1 { font-weight: 800; font-stretch: 62%; font-size: clamp(3.6rem, 10vw, 8.4rem); line-height: .86; letter-spacing: -.01em; text-transform: uppercase; }
+  h1 { font-weight: 800; font-stretch: 62%; font-size: clamp(3.6rem, 10vw, 7.2rem); line-height: .86; letter-spacing: -.01em; text-transform: uppercase; }
   .hero-line { font-family: var(--display); font-stretch: 112%; font-weight: 500; font-size: clamp(1.25rem, 2.2vw, 1.6rem); line-height: 1.3; margin-top: 28px; max-width: 26ch; }
   .hero p.sub { margin-top: 18px; max-width: 46ch; color: var(--ink-soft); }
   .hero-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
-  .btn { display: inline-flex; align-items: center; min-height: 46px; padding: 0 22px; border-radius: 6px; font-family: var(--display); font-weight: 600; text-decoration: none; border: 2px solid var(--ink); }
+  /* buttons: a fill sweeps across like a satellite swath, with a radar-ramp strip underneath */
+  .btn { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 22px; border-radius: 6px;
+    font-family: var(--display); font-weight: 600; text-decoration: none; border: 2px solid var(--ink);
+    position: relative; isolation: isolate; overflow: hidden; --fill: var(--link);
+    transition: color .25s, border-color .25s, transform .12s; }
+  .btn::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--fill);
+    transform: scaleX(0); transform-origin: right; transition: transform .45s var(--ease-scan); }
+  .btn::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+    background: linear-gradient(90deg, var(--z1), var(--z2), var(--z3), var(--z4), var(--z5));
+    transform: scaleX(0); transform-origin: left; transition: transform .6s var(--ease-scan) .05s; }
+  .btn:hover::before, .btn:focus-visible::before { transform: scaleX(1); transform-origin: left; }
+  .btn:hover::after, .btn:focus-visible::after { transform: scaleX(1); }
+  .btn:active { transform: translateY(1px) scale(.98); }
+  .btn .ic { transition: transform .25s var(--ease-out); }
+  .btn:hover .ic { transform: translateY(3px); }
+  .btn:hover .ic.ext { transform: translate(2px, -2px); }
   .btn.primary { background: var(--ink); color: var(--paper); }
-  .btn.primary:hover { background: var(--link); border-color: var(--link); color: #fff; }
-  .btn.ghost { color: var(--ink); }
-  .btn.ghost:hover { background: var(--ink); color: var(--paper); }
+  .btn.primary:hover, .btn.primary:focus-visible { color: #fff; border-color: var(--link); }
+  .btn.ghost { color: var(--ink); --fill: var(--ink); }
+  .btn.ghost:hover, .btn.ghost:focus-visible { color: var(--paper); }
 
   /* datacube */
   .cube-panel { display: grid; justify-items: center; gap: 18px; }
@@ -73,13 +90,82 @@
   .night .hero { padding-top: 40px; padding-bottom: 88px; grid-template-columns: 0.9fr 1.1fr; gap: 24px; }
   .night .hero p.sub { color: var(--night-text); }
   .night .btn { border-color: var(--paper); }
-  .night .btn.primary { background: var(--paper); color: var(--ink); }
-  .night .btn.primary:hover { background: var(--z3); border-color: var(--z3); color: var(--ink); }
-  .night .btn.ghost { color: var(--paper); }
-  .night .btn.ghost:hover { background: var(--paper); color: var(--ink); }
+  .night .btn.primary { background: var(--paper); color: var(--ink); --fill: var(--z3); }
+  .night .btn.primary:hover, .night .btn.primary:focus-visible { color: var(--ink); border-color: var(--z3); }
+  .night .btn.ghost { color: var(--paper); --fill: var(--paper); }
+  .night .btn.ghost:hover, .night .btn.ghost:focus-visible { color: var(--ink); }
+  .find, .seg button, .play, .zoom button, .tabs button { transition: transform .12s, background .2s, color .2s, border-color .2s; }
+  .find:active, .seg button:active, .play:active, .zoom button:active { transform: scale(.96); }
   .night a:focus-visible { outline-color: var(--z3); }
 
-  .live { margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(175,192,218,.3); }
+  .night .hero { grid-template-areas: "intro globe" "console globe"; grid-template-rows: auto 1fr; row-gap: 0; align-items: start; }
+  .hero-intro { grid-area: intro; padding-top: 24px; }
+  .console { grid-area: console; margin-top: 36px; }
+  .night .globe-col { grid-area: globe; position: sticky; top: 12px; }
+
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid rgba(175,192,218,.3); }
+  .tabs button { font-weight: 600; font-size: .98rem; min-height: 44px; padding: 0 16px; background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px; color: var(--night-text); cursor: pointer; }
+  .tabs button:hover { color: var(--paper); }
+  .tabs button[aria-selected="true"] { color: var(--paper); border-bottom-color: var(--z3); }
+  .pane { padding-top: 18px; }
+  .hint { margin-top: 14px; font-size: .92rem; color: var(--night-text); max-width: 52ch; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  .chips, .seg { border: 0; margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips legend, .seg legend { font-family: var(--display); font-size: .85rem; font-weight: 600; color: var(--night-text); margin-bottom: 8px; float: left; width: 100%; }
+  .chips label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px 0 10px; border: 1.5px solid rgba(175,192,218,.35); border-radius: 999px; font-family: var(--display); font-size: .9rem; cursor: pointer; }
+  .chips label:has(input:checked) { border-color: var(--z1); background: rgba(143,211,244,.12); }
+  .chips input { accent-color: var(--z1); width: 16px; height: 16px; }
+  .chips b { font-weight: 500; color: var(--night-text); }
+  .seg button { font-size: .9rem; font-weight: 600; min-height: 44px; padding: 0 13px; border-radius: 6px; border: 1.5px solid rgba(175,192,218,.35); background: transparent; color: var(--paper); cursor: pointer; }
+  .seg button:hover { border-color: var(--paper); }
+  .seg button[aria-pressed="true"] { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+  .seg button small { display: block; font-weight: 500; font-size: .72rem; opacity: .75; margin-top: -2px; }
+  .seg.small button { font-size: .85rem; min-height: 44px; }
+  .seg .draw { border-style: dashed; border-color: var(--z3); color: var(--z3); }
+  .seg .draw[aria-pressed="true"] { background: var(--z3); color: var(--ink); }
+
+  .satcard { margin-top: 18px; padding: 16px 18px; border-radius: 8px; background: rgba(143,211,244,.08); border: 1px solid rgba(143,211,244,.3); }
+  .satcard-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--display); font-size: 1.15rem; }
+  .satcard dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; margin-top: 10px; }
+  .satcard dd { font-family: var(--display); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .satcard dt { font-family: var(--display); font-size: .8rem; color: var(--night-text); }
+  .satcard dl div { display: flex; flex-direction: column-reverse; }
+  .satcard .find { margin-top: 14px; }
+  .find[aria-pressed="true"] { background: var(--z3); border-color: var(--z3); color: var(--ink); }
+  .x { width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.1); color: var(--paper); font-size: 1.2rem; cursor: pointer; }
+  .x:hover { background: rgba(255,255,255,.22); }
+
+  .cq-title { font-family: var(--display); font-weight: 700; font-size: 1.15rem; line-height: 1.3; }
+  .cq-title > span { display: block; font-weight: 500; font-size: .85rem; color: var(--night-text); margin-top: 2px; }
+  .cq-time { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+  .cq-time input { flex: 1; accent-color: var(--z3); min-width: 0; }
+  .cq-time output { font-family: var(--display); font-weight: 600; font-size: .92rem; font-variant-numeric: tabular-nums; min-width: 12.5ch; text-align: right; }
+  .play { flex: none; width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--z3); color: var(--ink); display: grid; place-items: center; cursor: pointer; }
+  .play:hover { background: var(--paper); }
+  .cq-code { display: block; margin-top: 16px; padding: 12px 14px; border-radius: 6px; background: rgba(5,12,28,.55); border: 1px solid rgba(175,192,218,.2); font: 500 .8rem/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; color: #CFE6FF; white-space: pre-wrap; word-break: break-word; }
+  .cq-code .k { color: var(--z3); }
+  .cq-code .s { color: #9FE3B4; }
+  .cq-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+  .cq-stats div { display: flex; flex-direction: column-reverse; justify-content: flex-end; }
+  .cq-stats dd { font-family: var(--display); font-weight: 700; font-size: 1.2rem; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .cq-stats dt { font-family: var(--display); font-size: .78rem; color: var(--night-text); line-height: 1.25; margin-top: 3px; }
+  .spark { margin-top: 16px; }
+  .spark figcaption { font-family: var(--display); font-size: .8rem; color: var(--night-text); margin-bottom: 6px; }
+  .spark svg { display: block; width: 100%; height: 96px; cursor: pointer; background: rgba(5,12,28,.35); border-radius: 6px; }
+  .spark-axis { display: flex; justify-content: space-between; font-family: var(--display); font-size: .75rem; color: var(--night-text); margin-top: 4px; }
+
+  .globe-wrap { position: relative; width: 100%; max-width: 620px; }
+  .zoom { position: absolute; right: 6px; top: 6px; display: grid; gap: 6px; }
+  .zoom button { width: 44px; height: 44px; border-radius: 8px; border: 1px solid rgba(175,192,218,.4); background: rgba(13,26,51,.7); color: var(--paper); font-size: 1.3rem; line-height: 1; cursor: pointer; }
+  .zoom button:hover { background: var(--paper); color: var(--ink); }
+  .probe { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); font-family: var(--display); font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums; padding: 5px 12px; border-radius: 999px; background: rgba(5,12,28,.75); white-space: nowrap; pointer-events: none; }
+  .probe:empty { display: none; }
+  .drawing-tip { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); font-family: var(--display); font-size: .85rem; font-weight: 600; padding: 6px 14px; border-radius: 999px; background: var(--z3); color: var(--ink); pointer-events: none; white-space: nowrap; }
+  .globe-key .dot { width: 8px; height: 8px; border-radius: 50%; background: #E6ECF5; }
+  .globe-key .bar { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; }
+  .globe-key .bar i { width: 220px; max-width: 50vw; height: 10px; border-radius: 3px; }
+  .live { padding-top: 18px; }
   .live-head { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 600; font-size: .95rem; }
   .live-head i { width: 9px; height: 9px; border-radius: 50%; background: var(--z2); box-shadow: 0 0 0 0 rgba(44,156,90,.7); animation: pulse 2s infinite; }
   .live-head i.off { background: var(--z4); animation: none; }
@@ -87,13 +173,14 @@
   .live dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 28px; margin-top: 16px; }
   .live dd { font-family: var(--display); font-weight: 700; font-size: 1.35rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
   .live dt { font-family: var(--display); font-size: .88rem; color: var(--night-text); }
-  .live div { display: flex; flex-direction: column-reverse; }
-  .find { margin-top: 20px; min-height: 42px; padding: 0 18px; border-radius: 6px; border: 1.5px solid rgba(238,242,245,.6); background: transparent; color: var(--paper); font-weight: 600; font-size: .95rem; cursor: pointer; transition: background .2s, color .2s; }
+  .live dl > div { display: flex; flex-direction: column-reverse; }
+  .find { margin-top: 20px; min-height: 44px; padding: 0 18px; border-radius: 6px; border: 1.5px solid rgba(238,242,245,.6); background: transparent; color: var(--paper); font-weight: 600; font-size: .95rem; cursor: pointer; transition: background .2s, color .2s; }
   .find:hover { background: var(--paper); color: var(--ink); }
 
   .night .hero > * { min-width: 0; }
   .globe-col { display: grid; justify-items: center; gap: 10px; min-width: 0; }
-  .globe { width: 100%; max-width: 620px; aspect-ratio: 1; cursor: grab; overflow: hidden; }
+  .globe { width: 100%; aspect-ratio: 1; cursor: grab; overflow: hidden; }
+  .globe.drawing { cursor: crosshair; }
   .globe canvas { display: block; }
   .globe:active { cursor: grabbing; }
   .globe-fallback { display: grid; place-items: center; height: 100%; text-align: center; color: var(--night-text); font-family: var(--display); padding: 24px; }
@@ -102,8 +189,15 @@
   .globe-key .sw { width: 18px; height: 3px; background: var(--z3); border-radius: 2px; }
   .globe-key .rain { width: 40px; height: 6px; border-radius: 2px; background: linear-gradient(90deg, var(--z1), var(--z2), var(--z3), var(--z4), var(--z5)); }
   .globe-key small { flex-basis: 100%; font-size: .8rem; opacity: .8; }
-  .sat-label { pointer-events: none; transform: translate(-5px, -5px); font-family: var(--display); font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,.9); }
-  .sat-label::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; border-radius: 50%; background: var(--c, #fff); box-shadow: 0 0 0 3px rgba(255,255,255,.25), 0 0 12px var(--c, #fff); }
+  .sat { position: relative; border: 0; padding: 0; background: none; cursor: pointer; font-family: var(--display); color: #fff; transition: opacity .3s; }
+  .sat-main { transform: translate(-7px, -7px); font-size: 12px; font-weight: 600; white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,.9); padding: 4px 6px 4px 0; }
+  .sat-main::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; border-radius: 50%; background: var(--c, #fff); box-shadow: 0 0 0 3px rgba(255,255,255,.25), 0 0 12px var(--c, #fff); }
+  .sat-dot { width: 16px; height: 16px; transform: translate(-50%, -50%); }
+  .sat-dot::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--c); opacity: .85; }
+  .sat-dot::after { content: attr(data-name); position: absolute; left: 16px; top: -2px; font-size: 11px; font-weight: 600; white-space: nowrap; text-shadow: 0 1px 3px #000; opacity: 0; transition: opacity .15s; pointer-events: none; }
+  .sat-dot:hover::after, .sat-dot:focus-visible::after, .sat.on::after { opacity: 1; }
+  .sat.on::before { box-shadow: 0 0 0 3px var(--z3), 0 0 14px var(--z3); }
+  .sat-dot.on::before { inset: 3px; background: var(--z3); }
 
   /* sections */
   section.block { padding: 96px 0; border-top: 1px solid var(--rule); }
@@ -171,14 +265,18 @@
   @media (max-width: 900px) {
     .hero, .head, .feature, .pubs li, .timeline li, .two { grid-template-columns: 1fr; gap: 20px; }
     .hero, .night .hero { padding-top: 24px; grid-template-columns: 1fr; }
-    .globe { max-width: 460px; }
+    .night .hero { grid-template-areas: "intro" "globe" "console"; }
+    .night .globe-col { position: static; margin-top: 24px; }
+    .globe-wrap { max-width: 520px; }
+    .console { margin-top: 12px; }
+    .cq-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .grid { grid-template-columns: 1fr 1fr; }
     .head { margin-bottom: 36px; }
   }
   @media (max-width: 600px) {
     .wrap { padding: 0 16px; }
     .nav ul { gap: 16px; }
-    .nav ul li:nth-child(n+3) { display: none; }
+    .nav ul li:nth-child(2), .nav ul li:nth-child(3) { display: none; }
     .grid, .skills, .facts { grid-template-columns: 1fr; }
     .stack { transform: scale(.85); height: 290px; }
     section.block { padding: 72px 0; }
@@ -186,6 +284,61 @@
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     .slice { transition: none; }
+  }
+
+  /* ---------- motion (skipped when the visitor asks for reduced motion) ---------- */
+  @keyframes scan-reveal { from { clip-path: inset(-10% -4% 110% -4%); } to { clip-path: inset(-10% -4% -10% -4%); } }
+  @keyframes scan-line { from { top: 0; } to { top: var(--scan-end, 260px); } }
+  @keyframes fade-out { to { opacity: 0; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(16px); } }
+  .hero-intro { position: relative; }
+  .hero-intro .scan { display: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-intro h1 { animation: scan-reveal 1s var(--ease-scan) .15s both; }
+    .hero-intro .scan { display: block; position: absolute; left: -2%; right: -2%; height: 2px; top: 0; background: var(--z1); box-shadow: 0 0 14px 2px var(--z1); pointer-events: none;
+      animation: scan-line 1s var(--ease-scan) .15s both, fade-out .4s ease 1.1s forwards; }
+    .hero-line  { animation: rise .7s var(--ease-out) .75s both; }
+    .hero p.sub { animation: rise .7s var(--ease-out) .9s both; }
+    .hero-links { animation: rise .7s var(--ease-out) 1.05s both; }
+    .console    { animation: rise .8s var(--ease-out) 1.2s both; }
+    .globe-col  { animation: rise 1.2s var(--ease-out) .1s both; }
+    .pane:not([hidden]) { animation: rise .45s var(--ease-out) both; }
+    .satcard:not([hidden]) { animation: rise .35s var(--ease-out) both; }
+  }
+  .motion .reveal { position: relative; opacity: 0; transform: translateY(18px);
+    transition: opacity .6s ease calc(var(--i,0) * 90ms), transform .7s var(--ease-out) calc(var(--i,0) * 90ms); }
+  .motion .reveal.in { opacity: 1; transform: none; }
+  .motion .reveal::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 2px; pointer-events: none;
+    background: linear-gradient(90deg, var(--z1), var(--z2), var(--z3), var(--z4), var(--z5));
+    transform: scaleX(0); transform-origin: left;
+    transition: transform .9s var(--ease-scan) calc(var(--i,0) * 90ms + .1s), opacity .6s ease calc(var(--i,0) * 90ms + 1.1s); }
+  .motion .reveal.in::before { transform: scaleX(1); opacity: 0; }
+  .motion .head.reveal::before, .motion .contact h2.reveal::before, .motion .proj.reveal::before { display: none; }
+  .facts b { font-variant-numeric: tabular-nums; }
+  .motion .facts:not(.in) div { border-left-color: var(--rule); }
+  .motion .facts div { transition: border-color .45s ease; }
+  .motion .facts div:nth-child(2) { transition-delay: .25s; }
+  .motion .facts div:nth-child(3) { transition-delay: .5s; }
+  /* radar-ramp band where the night hero meets the page */
+  .night { position: relative; }
+  .night::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
+    background: linear-gradient(90deg, var(--z1), var(--z2), var(--z3), var(--z4), var(--z5)); }
+  /* project cards: ramp strip on hover and a faint radar sweep that follows the pointer */
+  .proj { position: relative; overflow: hidden; }
+  .proj::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, var(--z1), var(--z2), var(--z3), var(--z4), var(--z5)); transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease-scan); }
+  .proj:hover::after { transform: scaleX(1); }
+  @property --sweep { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+  @keyframes sweep { to { --sweep: 360deg; } }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .motion .proj.reveal::before { display: block; content: ""; position: absolute; width: 360px; height: 360px; left: calc(var(--mx, -999px) - 180px); top: calc(var(--my, -999px) - 180px);
+      transform: none; border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity .3s;
+      background: conic-gradient(from var(--sweep), rgba(29,95,168,.16), rgba(29,95,168,0) 70deg, rgba(29,95,168,0));
+      animation: sweep 2.4s linear infinite; }
+    .motion .proj.reveal:hover::before { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .btn::before, .btn::after, .btn .ic { transition: none; }
+    .btn:active { transform: none; }
   }
 </style>
 </head>
@@ -206,16 +359,25 @@
 
 <main id="top">
   <section class="wrap hero">
-    <div>
+    <div class="hero-intro">
+      <span class="scan" aria-hidden="true"></span>
       <h1>Jaysheel<br>Golani</h1>
       <p class="hero-line">I turn terabytes of satellite rain data into something you can query in seconds.</p>
       <p class="sub">Senior Research Fellow at IIT Hyderabad. I build analysis-ready datacubes for INSAT-3DR and GPM radar observations, and apply machine learning to rainfall and lightning nowcasting over India.</p>
       <div class="hero-links">
-        <a class="btn primary" href="#research">See the research</a>
-        <a class="btn ghost" href="https://github.com/Jaysheel11">GitHub</a>
+        <a class="btn primary" href="#research">See the research <span class="ic" aria-hidden="true">↓</span></a>
+        <a class="btn ghost" href="https://github.com/Jaysheel11">GitHub <span class="ic ext" aria-hidden="true">↗</span></a>
       </div>
 
-      <div class="live" aria-live="off">
+    </div>
+
+    <div class="console" id="console">
+      <div class="tabs" role="tablist" aria-label="Globe mode">
+        <button type="button" role="tab" id="tab-live" aria-selected="true" aria-controls="pane-live">Live now</button>
+        <button type="button" role="tab" id="tab-cube" aria-selected="false" aria-controls="pane-cube" tabindex="-1">Query my INSAT data</button>
+      </div>
+
+      <div class="pane live" id="pane-live" role="tabpanel" aria-labelledby="tab-live">
         <p class="live-head"><i id="live-dot"></i><span id="live-status">Connecting to live satellite data…</span></p>
         <dl>
           <div><dt>Where GPM is now</dt><dd id="r-pos">–</dd></div>
@@ -223,16 +385,83 @@
           <div><dt>GPM's next pass over India</dt><dd id="r-next">–</dd></div>
           <div><dt>Indian cities with rain right now</dt><dd id="r-rain">–</dd></div>
         </dl>
-        <button type="button" class="find" id="find-gpm" hidden>Turn the globe to GPM</button>
+        <fieldset class="chips" id="layers">
+          <legend>Show on the globe</legend>
+          <label><input type="checkbox" id="lay-swarm" checked> <span>All weather satellites <b id="swarm-n"></b></span></label>
+          <label><input type="checkbox" id="lay-path" checked> <span>GPM's next orbit</span></label>
+          <label><input type="checkbox" id="lay-rain" checked> <span>Rain at cities</span></label>
+        </fieldset>
+        <div class="satcard" id="satcard" hidden>
+          <div class="satcard-head"><b id="sc-name"></b><button type="button" class="x" id="sc-close" aria-label="Close satellite details">×</button></div>
+          <dl>
+            <div><dt>Position</dt><dd id="sc-pos"></dd></div>
+            <div><dt>Altitude</dt><dd id="sc-alt"></dd></div>
+            <div><dt>Speed</dt><dd id="sc-spd"></dd></div>
+            <div><dt>Orbit</dt><dd id="sc-orb"></dd></div>
+          </dl>
+          <button type="button" class="find" id="sc-follow" aria-pressed="false">Follow it</button>
+        </div>
+        <p class="hint" id="live-hint">Click any satellite on the globe to see where it is and follow it.</p>
+      </div>
+
+      <div class="pane cubeq" id="pane-cube" role="tabpanel" aria-labelledby="tab-cube" hidden>
+        <p class="cq-title">Cyclone Biparjoy, 13–16 June 2023 <span>INSAT-3DR imager · <span id="cq-n">71</span> hourly scenes · 4 km data averaged to 0.125°</span></p>
+
+        <fieldset class="seg" id="cq-vars">
+          <legend>Variable</legend>
+        </fieldset>
+
+        <div class="cq-time">
+          <button type="button" class="play" id="cq-play" aria-label="Play">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path id="cq-play-ico" d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>
+          </button>
+          <label class="sr" for="cq-t">Time</label>
+          <input type="range" id="cq-t" min="0" max="70" value="62" step="1">
+          <output id="cq-tout" for="cq-t">–</output>
+        </div>
+
+        <fieldset class="seg small" id="cq-boxes">
+          <legend>Subset a region</legend>
+          <button type="button" id="cq-draw" class="draw">Draw a box on the globe</button>
+        </fieldset>
+
+        <code class="cq-code" id="cq-code"></code>
+
+        <dl class="cq-stats">
+          <div><dt id="cq-l1">Box mean</dt><dd id="cq-s1">–</dd></div>
+          <div><dt id="cq-l2">Coldest</dt><dd id="cq-s2">–</dd></div>
+          <div><dt id="cq-l3">Cloud tops below 235 K</dt><dd id="cq-s3">–</dd></div>
+          <div><dt>Query</dt><dd id="cq-s4">–</dd></div>
+        </dl>
+
+        <figure class="spark">
+          <figcaption id="cq-spark-cap">Box mean through time. Click the chart to jump.</figcaption>
+          <svg id="cq-spark" viewBox="0 0 400 96" preserveAspectRatio="none" role="img" aria-label="Time series of the box mean"></svg>
+          <div class="spark-axis"><span>13 Jun</span><span>14 Jun</span><span>15 Jun</span><span>16 Jun</span></div>
+        </figure>
+        <p class="hint">Click anywhere inside the data to query a single pixel. Data: INSAT-3DR L1C from ISRO/MOSDAC, from my INSATCUBE archive.</p>
       </div>
     </div>
 
     <div class="globe-col">
-      <div class="globe" id="globe" role="img" aria-label="Live 3D globe showing the current positions of the GPM, INSAT-3DR and Himawari-9 satellites, GPM's orbit path, and current rain at Indian cities"></div>
-      <div class="globe-key">
+      <div class="globe-wrap">
+        <div class="globe" id="globe" role="img" aria-label="3D globe showing live satellite positions and rain, or an INSAT-3DR data layer for Cyclone Biparjoy"></div>
+        <div class="zoom" aria-label="Zoom">
+          <button type="button" id="zin" aria-label="Zoom in">+</button>
+          <button type="button" id="zout" aria-label="Zoom out">−</button>
+        </div>
+        <p class="probe" id="probe" aria-live="off"></p>
+        <p class="drawing-tip" id="draw-tip" hidden>Drag across the globe to draw your box</p>
+      </div>
+      <div class="globe-key" id="key-live">
         <span><i class="sw"></i>GPM orbit, next 90 min</span>
+        <span><i class="dot"></i>Weather satellites</span>
         <span><i class="rain"></i>Rain now at 10 cities</span>
-        <small>Positions update every second from public orbit data. Drag to spin. Geostationary satellites are drawn closer than real scale.</small>
+        <small>Positions update every second from public orbit data (CelesTrak). Rain from Open-Meteo. Geostationary satellites are drawn closer than real scale.</small>
+      </div>
+      <div class="globe-key" id="key-cube" hidden>
+        <span class="bar"><b id="kc-min"></b><i id="kc-bar"></i><b id="kc-max"></b></span>
+        <small id="kc-note"></small>
       </div>
     </div>
   </section>
@@ -297,6 +526,7 @@
             </div>
             <div class="legend"><span>light</span><i></i><span>heavy rain</span></div>
             <p class="cube-caption">A datacube stacks a satellite's images through time so any slice is one query away. This storm is simulated.</p>
+            <a class="btn primary" href="#top" id="try-cube">Query real INSAT-3DR data on the globe</a>
           </div>
         </div>
         <div>
@@ -499,177 +729,52 @@
 })();
 </script>
 
-<script src="https://unpkg.com/globe.gl@2.46.1/dist/globe.gl.min.js"></script>
-<script src="https://unpkg.com/satellite.js@5.0.0/dist/satellite.min.js"></script>
 <script>
 (() => {
-  const el = document.getElementById("globe");
-  const $ = id => document.getElementById(id);
-  const fallback = msg => { el.innerHTML = `<div class="globe-fallback">${msg}</div>`; };
-
-  const webgl = (() => { try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch (e) { return false; } })();
-  if (!window.Globe || !webgl) { fallback("The live globe needs WebGL, which this browser doesn't have turned on."); }
-
-  // ---------- satellites (public orbit data from CelesTrak) ----------
-  const SATS = [
-    { id: 39574, name: "GPM", color: "#F2D13A", geo: false },
-    { id: 41752, name: "INSAT-3DR", color: "#8FD3F4", geo: true },
-    { id: 41836, name: "Himawari-9", color: "#C7B8FF", geo: true }
-  ];
-  const GEO_DRAW_ALT = 0.28; // real height is ~5.6 Earth radii; drawn closer so it fits
-
-  async function loadTLE(sat) {
-    const key = "tle-" + sat.id;
-    try {
-      const cached = JSON.parse(localStorage.getItem(key) || "null");
-      if (cached && Date.now() - cached.t < 6 * 3600e3) return cached.lines;
-    } catch (e) {}
-    const txt = await (await fetch(`https://celestrak.org/NORAD/elements/gp.php?CATNR=${sat.id}&FORMAT=TLE`)).text();
-    const lines = txt.trim().split(/\r?\n/).map(s => s.trim());
-    if (lines.length < 3 || !lines[1].startsWith("1 ")) throw new Error("bad TLE");
-    try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), lines })); } catch (e) {}
-    return lines;
-  }
-
-  function where(satrec, date) {
-    const pv = satellite.propagate(satrec, date);
-    if (!pv || !pv.position) return null;
-    const geo = satellite.eciToGeodetic(pv.position, satellite.gstime(date));
-    const v = pv.velocity;
-    return {
-      lat: satellite.degreesLat(geo.latitude),
-      lng: satellite.degreesLong(geo.longitude),
-      km: geo.height,
-      speed: Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
-    };
-  }
-
-  const overIndia = p => p.lat > 8 && p.lat < 35.5 && p.lng > 68 && p.lng < 97.5;
-  const fmtLat = p => `${Math.abs(p.lat).toFixed(1)}°${p.lat >= 0 ? "N" : "S"} ${Math.abs(p.lng).toFixed(1)}°${p.lng >= 0 ? "E" : "W"}`;
-
-  // ---------- rain at Indian cities (Open-Meteo, live) ----------
-  const CITIES = [
-    ["Hyderabad", 17.39, 78.49], ["Mumbai", 19.08, 72.88], ["Delhi", 28.61, 77.21], ["Kolkata", 22.57, 88.36],
-    ["Chennai", 13.08, 80.27], ["Bengaluru", 12.97, 77.59], ["Guwahati", 26.14, 91.74], ["Kochi", 9.93, 76.27],
-    ["Ahmedabad", 23.02, 72.57], ["Bhubaneswar", 20.30, 85.82]
-  ].map(([name, lat, lng]) => ({ name, lat, lng, mm: null }));
-  const RAMP = ["#8FD3F4", "#2C9C5A", "#F2D13A", "#EE8A2B", "#D7302A"];
-  const rainColor = mm => mm == null ? "rgba(200,210,225,.6)" : mm <= 0 ? "rgba(200,210,225,.85)" : RAMP[Math.min(4, Math.floor(Math.log2(mm * 4 + 1)))];
-
-  async function loadRain() {
-    const q = `latitude=${CITIES.map(c => c.lat).join(",")}&longitude=${CITIES.map(c => c.lng).join(",")}&current=precipitation`;
-    const data = await (await fetch("https://api.open-meteo.com/v1/forecast?" + q)).json();
-    (Array.isArray(data) ? data : [data]).forEach((d, i) => { CITIES[i].mm = d.current ? d.current.precipitation : null; });
-    const wet = CITIES.filter(c => c.mm > 0);
-    $("r-rain").textContent = wet.length ? `${wet.length} of ${CITIES.length}: ${wet.slice(0, 2).map(c => c.name).join(", ")}${wet.length > 2 ? "…" : ""}` : `None of ${CITIES.length}, all dry`;
-    if (globe) globe.pointsData(CITIES);
-  }
-
-  // ---------- globe ----------
-  let globe = null;
-  if (window.Globe && webgl) {
-    globe = new Globe(el, { animateIn: true })
-      .backgroundColor("rgba(0,0,0,0)")
-      .globeImageUrl("https://unpkg.com/three-globe@2.31.0/example/img/earth-blue-marble.jpg")
-      .atmosphereColor("#8FB8FF")
-      .atmosphereAltitude(0.16)
-      .pointOfView({ lat: 14, lng: 84, altitude: 2.7 }, 0)
-      .pointLat("lat").pointLng("lng")
-      .pointColor(d => rainColor(d.mm))
-      .pointAltitude(d => 0.006 + Math.min(d.mm || 0, 12) * 0.012)
-      .pointRadius(0.55)
-      .pointLabel(d => `<b>${d.name}</b><br>${d.mm == null ? "no reading" : d.mm > 0 ? d.mm + " mm rain in the last 15 min" : "dry right now"}`)
-      .pathPoints("pts").pathPointLat(p => p[0]).pathPointLng(p => p[1]).pathPointAlt(p => p[2])
-      .pathColor(() => ["rgba(242,209,58,0.95)", "rgba(242,209,58,0.05)"])
-      .pathStroke(1.6)
-      .pathTransitionDuration(0)
-      .htmlLat("lat").htmlLng("lng").htmlAltitude("alt")
-      .htmlTransitionDuration(0)
-      .htmlElement(d => { const e = document.createElement("div"); e.className = "sat-label"; e.style.setProperty("--c", d.color); e.textContent = d.name; return e; });
-
-    const c = globe.controls();
-    c.enableZoom = false;
-    c.enablePan = false;
-    const sizeIt = () => {
-      const w = el.clientWidth;
-      globe.width(w).height(w);
-      // on touch screens: vertical swipes scroll the page, sideways drags spin the globe
-      globe.renderer().domElement.style.touchAction = "pan-y";
-    };
-    sizeIt();
-    if ("ResizeObserver" in window) new ResizeObserver(sizeIt).observe(el);
-    globe.pointsData(CITIES);
-  }
-
-  // ---------- live loop ----------
-  async function start() {
-    const live = [];
-    for (const s of SATS) {
-      try { const l = await loadTLE(s); live.push({ ...s, rec: satellite.twoline2satrec(l[1], l[2]) }); } catch (e) {}
-    }
-    const gpm = live.find(s => s.id === 39574);
-    if (!gpm) {
-      $("live-dot").classList.add("off");
-      $("live-status").textContent = "Live orbit data is unavailable right now.";
-      return;
-    }
-    $("live-status").textContent = "Live: satellite positions and rain";
-
-    const markers = live.map(s => ({ name: s.name, color: s.color, rec: s.rec, geo: s.geo, lat: 0, lng: 0, alt: 0 }));
-
-    function tick() {
-      const now = new Date();
-      markers.forEach(m => {
-        const p = where(m.rec, now);
-        if (!p) return;
-        m.lat = p.lat; m.lng = p.lng; m.alt = m.geo ? GEO_DRAW_ALT : p.km / 6371;
+  // the hero scan line ends at the bottom of the name
+  const h1 = document.querySelector(".hero-intro h1"), scan = document.querySelector(".hero-intro .scan");
+  if (h1 && scan) scan.style.setProperty("--scan-end", (h1.offsetTop + h1.offsetHeight) + "px");
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) return;
+  document.documentElement.classList.add("motion");
+  const NUM = /\d+(?:\.\d+)?/g;
+  function countUp(b) {
+    const final = b.textContent, nums = final.match(NUM);
+    if (!nums) return;
+    const first = parseFloat(nums[0]), t0 = performance.now(), dur = 1100;
+    const step = now => {
+      const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      b.textContent = final.replace(NUM, s => {
+        const to = parseFloat(s), from = to >= 1000 ? first : 0, dp = (s.split(".")[1] || "").length;
+        return (from + (to - from) * e).toFixed(dp);
       });
-      const p = where(gpm.rec, now);
-      if (p) {
-        $("r-pos").textContent = overIndia(p) ? `${fmtLat(p)}, over India` : fmtLat(p);
-        $("r-alt").textContent = `${Math.round(p.km)} km, ${p.speed.toFixed(1)} km/s`;
-      }
-      if (globe) globe.htmlElementsData(markers);
-    }
-
-    function orbitAndPass() {
-      const now = Date.now();
-      const pts = [];
-      for (let m = 0; m <= 90; m += 1) {
-        const p = where(gpm.rec, new Date(now + m * 60e3));
-        if (p) pts.push([p.lat, p.lng, p.km / 6371]);
-      }
-      if (globe) globe.pathsData([{ pts }]);
-      let next = null;
-      for (let m = 0; m <= 24 * 60; m += 1) {
-        const p = where(gpm.rec, new Date(now + m * 60e3));
-        if (p && overIndia(p)) { next = m; break; }
-      }
-      $("r-next").textContent = next === 0 ? "Overhead now" : next == null ? "Not in the next 24 h" :
-        next < 60 ? `In ${next} min` : `In ${Math.floor(next / 60)} h ${next % 60} min`;
-    }
-
-    if (globe) {
-      const btn = $("find-gpm");
-      btn.hidden = false;
-      let home = true;
-      btn.addEventListener("click", () => {
-        const p = where(gpm.rec, new Date());
-        if (home && p) { globe.pointOfView({ lat: p.lat, lng: p.lng, altitude: 2.7 }, 1400); btn.textContent = "Back to India"; }
-        else { globe.pointOfView({ lat: 14, lng: 84, altitude: 2.7 }, 1400); btn.textContent = "Turn the globe to GPM"; }
-        home = !home;
-      });
-    }
-
-    tick(); orbitAndPass();
-    setInterval(tick, 1000);
-    setInterval(orbitAndPass, 60e3);
+      if (p < 1) requestAnimationFrame(step); else b.textContent = final;
+    };
+    requestAnimationFrame(step);
   }
-
-  start();
-  loadRain().catch(() => { $("r-rain").textContent = "Unavailable"; });
-  setInterval(() => loadRain().catch(() => {}), 10 * 60e3);
+  const io = new IntersectionObserver(entries => {
+    let n = 0;
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const el = e.target;
+      el.style.setProperty("--i", n++);
+      el.classList.add("in");
+      io.unobserve(el);
+      if (el.classList.contains("facts")) el.querySelectorAll("b").forEach(countUp);
+    }
+  }, { rootMargin: "0px 0px -10% 0px" });
+  document.querySelectorAll(".head, .feature, .pubs li, .timeline li, .proj, .skills > div, .contact h2")
+    .forEach(el => { el.classList.add("reveal"); io.observe(el); });
+  document.querySelectorAll(".facts").forEach(f => io.observe(f));
+  document.querySelectorAll(".proj").forEach(c => c.addEventListener("pointermove", e => {
+    const r = c.getBoundingClientRect();
+    c.style.setProperty("--mx", (e.clientX - r.left) + "px");
+    c.style.setProperty("--my", (e.clientY - r.top) + "px");
+  }));
 })();
 </script>
+
+<script src="https://unpkg.com/globe.gl@2.46.1/dist/globe.gl.min.js"></script>
+<script src="https://unpkg.com/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script src="globe.js"></script>
 </body>
 </html>
