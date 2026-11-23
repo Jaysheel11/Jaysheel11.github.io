@@ -166,6 +166,21 @@
   .globe-key .bar { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; }
   .globe-key .bar i { width: 220px; max-width: 50vw; height: 10px; border-radius: 3px; }
   .live { padding-top: 18px; }
+  .globe-key .tc { width: 18px; height: 3px; background: var(--z4); border-radius: 2px; }
+  .xsec { margin-top: 16px; }
+  .xsec-plot { display: grid; grid-template-columns: auto 1fr; gap: 8px; }
+  .xsec-y { display: flex; flex-direction: column; justify-content: space-between; font-family: var(--display); font-size: .72rem; color: var(--night-text); text-align: right; padding: 2px 0; }
+  .xsec canvas { display: block; width: 100%; height: auto; aspect-ratio: 640 / 240; border-radius: 6px; background: rgba(5,12,28,.55); cursor: crosshair; }
+  .xsec figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin-top: 8px; font-family: var(--display); font-size: .8rem; color: var(--night-text); font-variant-numeric: tabular-nums; }
+  .xsec-legend { display: inline-flex; align-items: center; gap: 8px; }
+  .xsec-legend i { width: 140px; height: 8px; border-radius: 2px; }
+  .tc-wrap { position: relative; display: block; width: 0; height: 0; pointer-events: auto; text-decoration: none; }
+  .tc-mark { position: absolute; left: -13px; top: -13px; width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--z4); border-left-color: transparent; border-right-color: transparent; animation: spin 2.4s linear infinite; }
+  .tc-wrap .lbl { position: absolute; left: 18px; top: -9px; font-family: var(--display); font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; text-shadow: 0 1px 3px #000; }
+  @keyframes spin { to { transform: rotate(-360deg); } }
+  .linkish { font: inherit; color: var(--z3); background: none; border: 0; padding: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .linkish:hover { color: var(--paper); }
+  @media (prefers-reduced-motion: reduce) { .tc-wrap .tc-mark { animation: none; } }
   .live-head { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 600; font-size: .95rem; }
   .live-head i { width: 9px; height: 9px; border-radius: 50%; background: var(--z2); box-shadow: 0 0 0 0 rgba(44,156,90,.7); animation: pulse 2s infinite; }
   .live-head i.off { background: var(--z4); animation: none; }
@@ -374,7 +389,8 @@
     <div class="console" id="console">
       <div class="tabs" role="tablist" aria-label="Globe mode">
         <button type="button" role="tab" id="tab-live" aria-selected="true" aria-controls="pane-live">Live now</button>
-        <button type="button" role="tab" id="tab-cube" aria-selected="false" aria-controls="pane-cube" tabindex="-1">Query my INSAT data</button>
+        <button type="button" role="tab" id="tab-cube" aria-selected="false" aria-controls="pane-cube" tabindex="-1">Query INSAT data</button>
+        <button type="button" role="tab" id="tab-gpm" aria-selected="false" aria-controls="pane-gpm" tabindex="-1">Slice GPM radar</button>
       </div>
 
       <div class="pane live" id="pane-live" role="tabpanel" aria-labelledby="tab-live">
@@ -384,9 +400,14 @@
           <div><dt>GPM altitude and speed</dt><dd id="r-alt">–</dd></div>
           <div><dt>GPM's next pass over India</dt><dd id="r-next">–</dd></div>
           <div><dt>Indian cities with rain right now</dt><dd id="r-rain">–</dd></div>
+          <div><dt>Latest Meteosat image over India</dt><dd id="r-msg">–</dd></div>
+          <div><dt>Active tropical cyclones</dt><dd id="r-tc">–</dd></div>
         </dl>
         <fieldset class="chips" id="layers">
           <legend>Show on the globe</legend>
+          <label><input type="checkbox" id="lay-clouds" checked> <span>Live clouds</span></label>
+          <label><input type="checkbox" id="lay-hsaf" checked> <span>Live rain rate</span></label>
+          <label><input type="checkbox" id="lay-tc" checked> <span>Cyclones</span></label>
           <label><input type="checkbox" id="lay-swarm" checked> <span>All weather satellites <b id="swarm-n"></b></span></label>
           <label><input type="checkbox" id="lay-path" checked> <span>GPM's next orbit</span></label>
           <label><input type="checkbox" id="lay-rain" checked> <span>Rain at cities</span></label>
@@ -441,6 +462,40 @@
         </figure>
         <p class="hint">Click anywhere inside the data to query a single pixel. Data: INSAT-3DR L1C from ISRO/MOSDAC, from my INSATCUBE archive.</p>
       </div>
+
+      <div class="pane gpmq" id="pane-gpm" role="tabpanel" aria-labelledby="tab-gpm" hidden>
+        <p class="cq-title">Cyclone Gulab at landfall, 26 September 2021 <span>GPM Dual-frequency Precipitation Radar (Ku band) · one overpass, <span id="gq-when">18:59 UTC</span> · <span id="gq-dims">245 scans × 49 beams × 147 heights</span> · from my GPMKUBE cube</span></p>
+
+        <fieldset class="seg" id="gq-dir">
+          <legend>Cut the storm</legend>
+          <button type="button" data-dir="along" aria-pressed="true">Along the track<small>one beam, ~1,200 km</small></button>
+          <button type="button" data-dir="across" aria-pressed="false">Across the track<small>one scan, ~245 km</small></button>
+        </fieldset>
+
+        <div class="cq-time">
+          <label class="sr" for="gq-pos">Cut position</label>
+          <input type="range" id="gq-pos" min="0" max="48" value="24" step="1">
+          <output id="gq-out" for="gq-pos">–</output>
+        </div>
+
+        <figure class="xsec">
+          <div class="xsec-plot">
+            <div class="xsec-y" aria-hidden="true"><span>18 km</span><span>12</span><span>6</span><span>0</span></div>
+            <canvas id="gq-xsec" width="640" height="240" role="img" aria-label="Radar reflectivity cross-section: height against distance along the cut"></canvas>
+          </div>
+          <figcaption><span id="gq-read">Hover the slice to read the reflectivity.</span><span class="xsec-legend"><b>12</b><i id="gq-bar"></i><b>60 dBZ</b></span></figcaption>
+        </figure>
+
+        <code class="cq-code" id="gq-code"></code>
+
+        <dl class="cq-stats">
+          <div><dt>Peak rain on the cut</dt><dd id="gq-s1">–</dd></div>
+          <div><dt>Peak reflectivity</dt><dd id="gq-s2">–</dd></div>
+          <div><dt>Highest storm top</dt><dd id="gq-s3">–</dd></div>
+          <div><dt>Melting layer (bright band)</dt><dd id="gq-s4">–</dd></div>
+        </dl>
+        <p class="hint">Click the radar swath on the globe to cut through any point. The curtain on the globe is stretched 40 times in height so you can see it; drag the globe to look at it from the side.</p>
+      </div>
     </div>
 
     <div class="globe-col">
@@ -456,8 +511,13 @@
       <div class="globe-key" id="key-live">
         <span><i class="sw"></i>GPM orbit, next 90 min</span>
         <span><i class="dot"></i>Weather satellites</span>
+        <span><i class="tc"></i>Cyclone track</span>
         <span><i class="rain"></i>Rain now at 10 cities</span>
-        <small>Positions update every second from public orbit data (CelesTrak). Rain from Open-Meteo. Geostationary satellites are drawn closer than real scale.</small>
+        <small>Clouds: Meteosat-9 infrared; rain rate: EUMETSAT H SAF (© EUMETSAT, refreshed every 15 min). Cyclones: GDACS. Orbits: CelesTrak, updated every second. City rain: Open-Meteo. Geostationary satellites are drawn closer than real scale.</small>
+      </div>
+      <div class="globe-key" id="key-gpm" hidden>
+        <span class="bar"><b>0.5</b><i id="kg-bar"></i><b>50+ mm/h</b></span>
+        <small>Near-surface rain under the radar swath, with the selected cut standing up as a 3D curtain.</small>
       </div>
       <div class="globe-key" id="key-cube" hidden>
         <span class="bar"><b id="kc-min"></b><i id="kc-bar"></i><b id="kc-max"></b></span>

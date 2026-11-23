@@ -23,6 +23,30 @@
   let mode = "live";
   let globe = null;
 
+  // globe.gl bundles three.js; we borrow its classes from objects it has already created
+  function three() {
+    const gm = globe && globe.globeMaterial();
+    if (!gm || !gm.map) return null;
+    let mesh = null;
+    globe.scene().traverse(o => { if (!mesh && o.isMesh && o.geometry && o.geometry.isBufferGeometry) mesh = o; });
+    if (!mesh) return null;
+    const G = mesh.geometry.constructor;
+    const BufferGeometry = mesh.geometry.type === "BufferGeometry" ? G : Object.getPrototypeOf(G);
+    return { Material: gm.constructor, Texture: gm.map.constructor, colorSpace: gm.map.colorSpace, Mesh: mesh.constructor, BufferGeometry,
+             Attr: mesh.geometry.getAttribute("position").constructor };
+  }
+  let T3 = null;
+  async function ready3() {
+    for (let i = 0; i < 150 && globe && !(T3 = T3 || three()); i++) await new Promise(r => setTimeout(r, 100));
+    return T3;
+  }
+  function canvasMat(canvas, extra = {}) {
+    const tex = new T3.Texture(canvas);
+    if (T3.colorSpace) tex.colorSpace = T3.colorSpace;
+    tex.needsUpdate = true;
+    return { tex, mat: new T3.Material(Object.assign({ map: tex, transparent: true, depthWrite: false, shininess: 0 }, extra)) };
+  }
+
   /* =====================================================================
      LIVE: satellites from CelesTrak, rain from Open-Meteo
      ===================================================================== */
@@ -33,7 +57,9 @@
   };
   const sats = [];          // {id, name, color, main, rec, lat, lng, alt, km, speed}
   let selected = null, following = false;
-  const show = { swarm: true, path: true, rain: true };
+  const show = { swarm: true, path: true, rain: true, clouds: true, hsaf: true, tc: true };
+  const liveTiles = {};   // clouds, hsaf -> tile datum
+  const cyclones = [];    // {name, lat, lng, alt, el, tracks: [[lat,lng]...], text, url}
 
   async function cachedText(key, url) {
     try {
@@ -121,9 +147,17 @@
   function refreshSats() {
     if (!globe) return;
     let data = [];
-    if (mode === "live") data = show.swarm ? sats : sats.filter(s => s.main);
-    else data = sats.filter(s => s.id === 41752);
+    if (mode === "live") data = (show.swarm ? sats : sats.filter(s => s.main)).concat(show.tc ? cyclones : []);
+    else if (mode === "cube") data = sats.filter(s => s.id === 41752);
     globe.htmlElementsData(data);
+  }
+  function refreshTiles() {
+    if (!globe) return;
+    let t = [];
+    if (mode === "live") t = ["clouds", "hsaf"].filter(k => show[k] && liveTiles[k]).map(k => liveTiles[k]);
+    else if (mode === "cube" && cube.tile) t = cube.tile;
+    else if (mode === "gpm" && gpm.tile) t = gpm.tile;
+    globe.tilesData(t);
   }
   function refreshPaths() {
     if (!globe) return;
@@ -138,13 +172,17 @@
       const gpm = sats.find(s => s.id === 39574);
       if (show.path && gpm) trail(gpm, ["rgba(242,209,58,0.95)", "rgba(242,209,58,0.05)"]);
       if (selected && selected.id !== 39574 && selected.km < 2000) trail(selected, ["rgba(143,211,244,0.95)", "rgba(143,211,244,0.05)"]);
+      if (show.tc) cyclones.forEach(c => c.tracks.forEach(tr => paths.push({ pts: tr.map(([la, lo]) => [la, lo, 0.004]), color: ["rgba(238,138,43,0.95)", "rgba(238,138,43,0.95)"] })));
+    } else if (mode === "gpm" && gpm.cutPts) {
+      paths.push({ pts: gpm.cutPts.map(([la, lo]) => [la, lo, 0.003]), color: ["#F2D13A", "#F2D13A"] });
     }
     globe.pathsData(paths);
   }
   function refreshPoints() {
     if (!globe) return;
     if (mode === "live") globe.pointsData(show.rain ? CITIES : []);
-    else globe.pointsData(cube.probe ? [cube.probe] : []);
+    else if (mode === "cube") globe.pointsData(cube.probe ? [cube.probe] : []);
+    else globe.pointsData([]);
   }
 
   function selectSat(s) {
@@ -280,26 +318,17 @@
   }
 
   function ensureOverlay() {
-    if (cube.overlay || !globe) return !!cube.overlay;
-    const gm = globe.globeMaterial();
-    if (!gm || !gm.map) return false;
+    if (cube.overlay || !T3) return !!cube.overlay;
     const { nx, ny, lat0, lat1, lon0, lon1 } = cube.meta;
     const canvas = document.createElement("canvas");
     canvas.width = nx; canvas.height = ny;
-    const tex = new gm.map.constructor(canvas);
-    if (gm.map.colorSpace) tex.colorSpace = gm.map.colorSpace;
-    tex.needsUpdate = true;
-    const mat = new gm.constructor({ map: tex, transparent: true, depthWrite: false, shininess: 0 });
+    const { tex, mat } = canvasMat(canvas);
     cube.overlay = { canvas, ctx: canvas.getContext("2d"), tex, mat, img: new ImageData(nx, ny) };
     // box fill that never hides the data under it
-    const capMat = new gm.constructor({ color: 0xF2D13A, transparent: true, opacity: 0.07, depthWrite: false, shininess: 0 });
-    const sideMat = new gm.constructor({ color: 0xF2D13A, transparent: true, opacity: 0, depthWrite: false });
+    const capMat = new T3.Material({ color: 0xF2D13A, transparent: true, opacity: 0.07, depthWrite: false, shininess: 0 });
+    const sideMat = new T3.Material({ color: 0xF2D13A, transparent: true, opacity: 0, depthWrite: false });
     globe.polygonCapMaterial(() => capMat).polygonSideMaterial(() => sideMat);
-    globe.tileLat("lat").tileLng("lng").tileWidth("w").tileHeight("h")
-      .tileAltitude(0.006).tileCurvatureResolution(1).tilesTransitionDuration(0)
-      .tileMaterial(() => mat)
-      .onTileClick((d, ev, c) => c && queryPoint(c.lat, c.lng));
-    cube.tile = [{ lat: (lat0 + lat1) / 2, lng: (lon0 + lon1) / 2, w: lon1 - lon0, h: lat1 - lat0 }];
+    cube.tile = [{ lat: (lat0 + lat1) / 2, lng: (lon0 + lon1) / 2, w: lon1 - lon0, h: lat1 - lat0, alt: 0.006, mat, onClick: queryPoint }];
     return true;
   }
 
@@ -513,13 +542,13 @@
       fb.insertBefore(b, drawBtn);
     });
     // wait for globe texture so the overlay can share its renderer classes
-    for (let i = 0; i < 100 && globe && !ensureOverlay(); i++) await new Promise(r => setTimeout(r, 100));
+    if (globe && await ready3()) ensureOverlay();
     cube.ready = true;
     const start = m.times.indexOf("2023-06-15T12:15Z");
     cube.t = start >= 0 ? start : 0;
     cube.box = PRESETS[0];
     legend();
-    if (mode === "cube" && globe && cube.tile) globe.tilesData(cube.tile);
+    refreshTiles();
     setBox(PRESETS[0], PRESETS[0].name);
     setTime(cube.t);
   }
@@ -534,6 +563,304 @@
     ico.setAttribute("d", "M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"); btn.setAttribute("aria-label", "Pause");
     cube.playing = setInterval(() => setTime((cube.t + 1) % cube.meta.times.length), 280);
   }
+
+  /* =====================================================================
+     LIVE LAYERS: Meteosat-9 (IODC) clouds and H SAF rain rate from EUMETView,
+     active tropical cyclones from GDACS
+     ===================================================================== */
+  const EUM = "https://view.eumetsat.int/geoserver/";
+  const MSG_BOX = { lat0: -40, lat1: 50, lon0: 30, lon1: 120 };
+  async function latestTime(layer) {
+    const [ws, name] = layer.split(":");
+    const xml = await (await fetch(`${EUM}${ws}/${name}/ows?service=WMS&version=1.3.0&request=GetCapabilities`)).text();
+    const m = xml.match(/<Dimension[^>]*name="time"[^>]*default="([^"]+)"/);
+    return m ? m[1] : null;
+  }
+  function loadImg(url) {
+    return new Promise((res, rej) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => res(i); i.onerror = rej; i.src = url; });
+  }
+  async function loadMeteosat(key, layer, alt, recolor) {
+    const time = await latestTime(layer);
+    const b = MSG_BOX, W = 1024, H = 1024;
+    const url = `${EUM}ows?service=WMS&version=1.3.0&request=GetMap&layers=${layer}&styles=&crs=EPSG:4326&bbox=${b.lat0},${b.lon0},${b.lat1},${b.lon1}&width=${W}&height=${H}&format=image/png&transparent=true${time ? "&time=" + encodeURIComponent(time) : ""}`;
+    const img = await loadImg(url);
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const x = c.getContext("2d", { willReadFrequently: true });
+    x.drawImage(img, 0, 0);
+    const id = x.getImageData(0, 0, W, H), d = id.data;
+    for (let i = 0; i < d.length; i += 4) recolor(d, i);
+    x.putImageData(id, 0, 0);
+    if (!(await ready3())) return time;
+    const prev = liveTiles[key];
+    const { mat } = canvasMat(c);
+    liveTiles[key] = { lat: (b.lat0 + b.lat1) / 2, lng: (b.lon0 + b.lon1) / 2, w: b.lon1 - b.lon0, h: b.lat1 - b.lat0, alt, mat };
+    if (prev) { prev.mat.map.dispose(); prev.mat.dispose(); }
+    refreshTiles();
+    return time;
+  }
+  const cloudColor = (d, i) => { // IR brightness: bright = cold cloud top. Clear ground becomes see-through.
+    const g = d[i]; const a = clamp((g - 70) / 140, 0, 1);
+    d[i] = d[i + 1] = d[i + 2] = 160 + a * 95; d[i + 3] = d[i + 3] ? a * a * 235 : 0;
+  };
+  const rainRateColor = (d, i) => { // H SAF palette is pale yellow (light) to deep blue (heavy); map to the site ramp
+    if (!d[i + 3] || (d[i] > 245 && d[i + 1] > 245 && d[i + 2] > 245)) { d[i + 3] = 0; return; }
+    const heavy = clamp(1 - (d[i] + d[i + 1]) / 2 / 255 + (d[i + 2] - d[i]) / 400, 0, 1);
+    const c = rampAt(RAMP_RGB, 0.15 + heavy * 0.85);
+    d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 235;
+  };
+  async function loadLiveLayers() {
+    const res = await Promise.allSettled([
+      loadMeteosat("clouds", "msg_iodc:ir108", 0.007, cloudColor),
+      loadMeteosat("hsaf", "msg_iodc:h63", 0.009, rainRateColor)
+    ]);
+    const t = res[0].status === "fulfilled" && res[0].value;
+    if (t) {
+      const d = new Date(t), mins = Math.round((Date.now() - d) / 60000);
+      $("r-msg").textContent = `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC, ${mins < 90 ? mins + " min" : Math.round(mins / 60) + " h"} ago`;
+    } else $("r-msg").textContent = "Unavailable";
+  }
+
+  async function loadCyclones() {
+    const list = await (await fetch("https://www.gdacs.org/gdacsapi/api/events/geteventlist/EVENTS4APP")).json();
+    const tcs = list.features.filter(f => f.properties.eventtype === "TC" && String(f.properties.iscurrent) === "true");
+    cyclones.length = 0;
+    for (const f of tcs.slice(0, 6)) {
+      const p = f.properties, [lng, lat] = f.geometry.coordinates;
+      const raw = (p.eventname || p.name || "Cyclone").replace(/^Tropical Cyclone\s*/i, "").replace(/-\d+$/, "");
+      const c = { name: raw.charAt(0) + raw.slice(1).toLowerCase(), lat, lng, alt: 0.012, tracks: [],
+                  text: (p.severitydata && p.severitydata.severitytext) || "", url: (p.url && p.url.report) || "https://www.gdacs.org/" };
+      try {
+        const geo = await (await fetch(`https://www.gdacs.org/gdacsapi/api/polygons/getgeometry?eventtype=TC&eventid=${p.eventid}&episodeid=${p.episodeid}`)).json();
+        geo.features.forEach(g => {
+          if (g.geometry.type === "LineString") c.tracks.push(g.geometry.coordinates.map(([x, y]) => [y, x]));
+          if (g.geometry.type === "MultiLineString") g.geometry.coordinates.forEach(l => c.tracks.push(l.map(([x, y]) => [y, x])));
+        });
+      } catch (e) {}
+      const a = document.createElement("a");
+      a.className = "tc-wrap"; a.href = c.url; a.target = "_blank"; a.rel = "noopener";
+      a.title = `${c.name}${c.text ? ": " + c.text : ""} (GDACS report)`;
+      a.innerHTML = `<i class="tc-mark"></i><span class="lbl"></span>`;
+      a.querySelector(".lbl").textContent = c.name;
+      a.addEventListener("pointerdown", ev => ev.stopPropagation());
+      c.el = a;
+      cyclones.push(c);
+    }
+    const out = $("r-tc");
+    out.textContent = "";
+    if (!cyclones.length) { out.textContent = "None right now"; }
+    cyclones.forEach((c, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "linkish"; b.textContent = c.name;
+      b.title = c.text || "Show on the globe";
+      b.addEventListener("click", () => { if (mode !== "live") setMode("live"); globe && globe.pointOfView({ lat: c.lat, lng: c.lng, altitude: 1.6 }, 1400); });
+      if (i) out.append(", ");
+      out.append(b);
+    });
+    refreshSats(); refreshPaths();
+  }
+
+  /* =====================================================================
+     GPM: one DPR overpass of Cyclone Gulab, sliced in the browser
+     ===================================================================== */
+  const gpm = { meta: null, vol: null, dir: "along", pos: 24, cutPts: null, tile: null, curtain: null, starting: false, ready: false };
+  const EXAG = 40;
+  const GPM_VIEW = { lat: 11, lng: 91, altitude: 0.55 }; // from the south-east, so the curtain is seen side-on
+  const dbzRGB = dbz => dbz < 12 ? null : rampAt([...RAMP_RGB, [178, 58, 184]], (dbz - 12) / 48);
+  const rainRGB = mm => rampAt(RAMP_RGB, Math.log10(Math.max(mm, 0.5) / 0.5) / 2);
+
+  async function initGpm() {
+    if (gpm.ready || gpm.starting) return;
+    gpm.starting = true;
+    try {
+      gpm.meta = await (await fetch("data/gulab/meta.json")).json();
+      const blob = await (await fetch("data/gulab/dbz.png")).blob();
+      let src;
+      try { src = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" }); }
+      catch (e) { src = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(blob); }); }
+      const c = document.createElement("canvas"); c.width = src.width; c.height = src.height;
+      const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(src, 0, 0);
+      const px = x.getImageData(0, 0, c.width, c.height).data;
+      gpm.vol = new Uint8Array(c.width * c.height);
+      for (let i = 0, j = 0; i < gpm.vol.length; i++, j += 4) gpm.vol[i] = px[j];
+    } catch (e) { $("gq-read").textContent = "Couldn't load the GPM slice right now."; gpm.starting = false; return; }
+    const m = gpm.meta;
+    const st = new Date(m.start);
+    $("gq-when").textContent = `${String(st.getUTCHours()).padStart(2, "0")}:${String(st.getUTCMinutes()).padStart(2, "0")} UTC`;
+    $("gq-dims").textContent = `${m.nscan} scans × ${m.nray} beams × ${m.nlev} heights`;
+    // dBZ legend
+    const stops = []; for (let i = 0; i <= 8; i++) { const c = dbzRGB(12 + 48 * i / 8); stops.push(`rgb(${c.map(v => v | 0)}) ${i * 12.5}%`); }
+    $("gq-bar").style.background = `linear-gradient(90deg, ${stops.join(",")})`;
+    const rs = []; for (let i = 0; i <= 8; i++) { const c = rainRGB(0.5 * Math.pow(100, i / 8)); rs.push(`rgb(${c.map(v => v | 0)}) ${i * 12.5}%`); }
+    $("kg-bar").style.background = `linear-gradient(90deg, ${rs.join(",")})`;
+    // swath rain on an equirectangular canvas
+    let la0 = 90, la1 = -90, lo0 = 180, lo1 = -180;
+    m.lat.forEach(v => { la0 = Math.min(la0, v); la1 = Math.max(la1, v); });
+    m.lon.forEach(v => { lo0 = Math.min(lo0, v); lo1 = Math.max(lo1, v); });
+    la0 -= 0.1; la1 += 0.1; lo0 -= 0.1; lo1 += 0.1;
+    const RES = 0.02, W = Math.ceil((lo1 - lo0) / RES), H = Math.ceil((la1 - la0) / RES);
+    const sw = document.createElement("canvas"); sw.width = W; sw.height = H;
+    const sx = sw.getContext("2d");
+    for (let i = 0; i < m.lat.length; i++) {
+      const r = m.rain[i], X = (m.lon[i] - lo0) / RES, Y = (la1 - m.lat[i]) / RES;
+      if (r >= 0.5) { const c = rainRGB(r); sx.fillStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},0.92)`; }
+      else sx.fillStyle = "rgba(225,235,250,0.16)";
+      sx.fillRect(X - 1.6, Y - 1.6, 3.2, 3.2);
+    }
+    gpm.box = { la0, la1, lo0, lo1 };
+    if (globe && await ready3()) {
+      const { mat } = canvasMat(sw);
+      gpm.tile = [{ lat: (la0 + la1) / 2, lng: (lo0 + lo1) / 2, w: lo1 - lo0, h: la1 - la0, alt: 0.0025, mat, onClick: pickFootprint }];
+    }
+    gpm.ready = true;
+    // start on the beam with the most heavy rain
+    let best = 24, bestN = -1;
+    for (let r = 0; r < m.nray; r++) { let n = 0; for (let s = 0; s < m.nscan; s++) if (m.rain[s * m.nray + r] > 10) n++; if (n > bestN) { bestN = n; best = r; } }
+    setCut("along", best);
+    refreshTiles();
+  }
+
+  function cutCells() {
+    const m = gpm.meta, out = [];
+    if (gpm.dir === "along") for (let s = 0; s < m.nscan; s++) out.push([s, gpm.pos]);
+    else for (let r = 0; r < m.nray; r++) out.push([gpm.pos, r]);
+    return out;
+  }
+  const dbzAt = (s, r, l) => { const q = gpm.vol[(r * gpm.meta.nlev + l) * gpm.meta.nscan + s]; return q ? q / gpm.meta.dbz_scale : NaN; };
+  function kmBetween(a, b) {
+    const R = 6371, p = Math.PI / 180, dLa = (b[0] - a[0]) * p, dLo = (b[1] - a[1]) * p;
+    const h = Math.sin(dLa / 2) ** 2 + Math.cos(a[0] * p) * Math.cos(b[0] * p) * Math.sin(dLo / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  function setCut(dir, pos) {
+    if (!gpm.ready) return;
+    const m = gpm.meta;
+    gpm.dir = dir;
+    gpm.pos = clamp(pos, 0, (dir === "along" ? m.nray : m.nscan) - 1);
+    document.querySelectorAll("#gq-dir button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.dir === dir)));
+    const slider = $("gq-pos");
+    slider.max = (dir === "along" ? m.nray : m.nscan) - 1;
+    slider.value = gpm.pos;
+    $("gq-out").textContent = dir === "along" ? `Beam ${gpm.pos + 1} of ${m.nray}` : `Scan ${gpm.pos + 1} of ${m.nscan}`;
+    const cells = cutCells(), N = cells.length, L = m.nlev;
+    gpm.cutPts = cells.map(([s, r]) => [m.lat[s * m.nray + r], m.lon[s * m.nray + r]]);
+    // distance axis
+    gpm.dist = [0]; for (let i = 1; i < N; i++) gpm.dist.push(gpm.dist[i - 1] + kmBetween(gpm.cutPts[i - 1], gpm.cutPts[i]));
+    // render the slice (cols = cells, rows = heights, top row = 18 km)
+    const xc = document.createElement("canvas");
+    xc.width = N; xc.height = L;
+    const xx = xc.getContext("2d"), img = xx.createImageData(N, L), d = img.data;
+    let peakZ = -1, peakRain = 0, topKm = 0, bbs = [];
+    cells.forEach(([s, r], k) => {
+      const i = s * m.nray + r;
+      peakRain = Math.max(peakRain, m.rain[i]);
+      if (m.top_km[i] != null) topKm = Math.max(topKm, m.top_km[i]);
+      if (m.bb_km[i] != null) bbs.push(m.bb_km[i]);
+      for (let l = 0; l < L; l++) {
+        const z = dbzAt(s, r, l), j = (l * N + k) * 4, c = z === z ? dbzRGB(z) : null;
+        if (c) { d[j] = c[0]; d[j + 1] = c[1]; d[j + 2] = c[2]; d[j + 3] = 255; peakZ = Math.max(peakZ, z); }
+        else { d[j] = 230; d[j + 1] = 238; d[j + 2] = 250; d[j + 3] = 18; }
+      }
+    });
+    xx.putImageData(img, 0, 0);
+    gpm.slice = xc;
+    drawXsec();
+    bbs.sort((a, b) => a - b);
+    $("gq-s1").textContent = `${peakRain.toFixed(0)} mm/h`;
+    $("gq-s2").textContent = peakZ > 0 ? `${peakZ.toFixed(1)} dBZ` : "–";
+    $("gq-s3").textContent = topKm ? `${topKm.toFixed(1)} km` : "–";
+    $("gq-s4").textContent = bbs.length ? `${bbs[bbs.length >> 1].toFixed(1)} km` : "none";
+    const sl = dir === "along" ? `nray=${gpm.pos}` : `nscan=${m.scan0 + gpm.pos}`;
+    $("gq-code").innerHTML =
+      `<span class="k">cut</span> = gpm.zFactorFinal.isel(${sl}).sel(height=slice(0, 18000))\n` +
+      `<span class="k">cut</span>.plot(x=<span class="s">"${dir === "along" ? "along_track_km" : "across_track_km"}"</span>)   # the slice\n` +
+      `gpm.precipRateNearSurface.isel(${sl}).max()   # peak rain`;
+    buildCurtain();
+    refreshPaths();
+  }
+
+  function drawXsec(hover) {
+    const cv = $("gq-xsec"), ctx = cv.getContext("2d"), W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H);
+    if (!gpm.slice) return;
+    ctx.imageSmoothingEnabled = gpm.dir === "across";
+    ctx.drawImage(gpm.slice, 0, 0, W, H);
+    // grid lines every 6 km
+    ctx.strokeStyle = "rgba(175,192,218,.22)"; ctx.lineWidth = 1;
+    [6, 12].forEach(km => { const y = H * (1 - km / 18); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); });
+    // distance ticks
+    const total = gpm.dist[gpm.dist.length - 1];
+    ctx.fillStyle = "rgba(175,192,218,.85)"; ctx.font = "600 12px Archivo, sans-serif";
+    const step = total > 600 ? 200 : total > 150 ? 50 : 25;
+    for (let km = 0; km <= total; km += step) { const x = km / total * W; ctx.fillRect(x, H - 6, 1, 6); ctx.fillText(km === 0 ? "0 km" : String(km), Math.min(x + 3, W - 30), H - 9); }
+    if (hover) { ctx.strokeStyle = "#F2D13A"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(hover.x, 0); ctx.lineTo(hover.x, H); ctx.stroke(); }
+  }
+
+  function buildCurtain() {
+    if (!globe || !T3) return;
+    const scene = globe.scene();
+    if (gpm.curtain) { scene.remove(gpm.curtain); gpm.curtain.geometry.dispose(); gpm.curtain = null; }
+    if (mode !== "gpm" || !gpm.cutPts) return;
+    // one coloured quad per radar echo, coloured per vertex (no texture or blending to sort)
+    const m = gpm.meta, cells = cutCells(), pts = gpm.cutPts, N = pts.length, L = m.nlev, base = 0.0035;
+    const edge = [];  // N+1 column boundaries, halfway between footprints (extended half a step at each end)
+    const mid = (u, v, f) => [u[0] + (v[0] - u[0]) * f, u[1] + (v[1] - u[1]) * f];
+    for (let k = 0; k <= N; k++) {
+      if (N === 1) edge.push(pts[0]);
+      else if (k === 0) edge.push(mid(pts[0], pts[1], -0.5));
+      else if (k === N) edge.push(mid(pts[N - 2], pts[N - 1], 1.5));
+      else edge.push(mid(pts[k - 1], pts[k], 0.5));
+    }
+    const hk = m.height_km, alt = km => base + Math.max(0, km) / 6371 * EXAG;
+    const lin = v => Math.pow(v / 255, 2.2);
+    const P = [], C = [], cache = new Map();
+    const at = (k, km) => { const key = k + ":" + km; let c = cache.get(key); if (!c) { c = globe.getCoords(edge[k][0], edge[k][1], alt(km)); cache.set(key, c); } return c; };
+    cells.forEach(([s, r], k) => {
+      for (let l = 0; l < L; l++) {
+        const z = dbzAt(s, r, l);
+        if (z !== z) continue;
+        const col = dbzRGB(z).map(lin);
+        const top = hk[l] + 0.0625, bot = hk[l] - 0.0625;
+        const a = at(k, bot), b = at(k + 1, bot), c = at(k + 1, top), d = at(k, top);
+        for (const v of [a, b, c, a, c, d]) { P.push(v.x, v.y, v.z); C.push(col[0], col[1], col[2]); }
+      }
+    });
+    if (!P.length) return;
+    const geo = new T3.BufferGeometry();
+    geo.setAttribute("position", new T3.Attr(new Float32Array(P), 3));
+    geo.setAttribute("color", new T3.Attr(new Float32Array(C), 3));
+    geo.computeVertexNormals();
+    if (!gpm.curtainMat) gpm.curtainMat = new T3.Material({ vertexColors: true, side: 2, shininess: 0, emissive: 0x333333 });
+    gpm.curtain = new T3.Mesh(geo, gpm.curtainMat);
+    scene.add(gpm.curtain);
+  }
+
+  function pickFootprint(lat, lng) {
+    if (mode !== "gpm" || !gpm.ready) return;
+    const m = gpm.meta;
+    let best = -1, bd = Infinity;
+    for (let i = 0; i < m.lat.length; i++) { const d = (m.lat[i] - lat) ** 2 + (m.lon[i] - lng) ** 2; if (d < bd) { bd = d; best = i; } }
+    if (best < 0 || bd > 0.15 * 0.15) return;
+    const s = Math.floor(best / m.nray), r = best % m.nray;
+    setCut(gpm.dir, gpm.dir === "along" ? r : s);
+  }
+
+  $("gq-xsec").addEventListener("pointermove", e => {
+    if (!gpm.ready || !gpm.slice) return;
+    const cv = e.currentTarget, rc = cv.getBoundingClientRect();
+    const fx = clamp((e.clientX - rc.left) / rc.width, 0, 0.9999), fy = clamp((e.clientY - rc.top) / rc.height, 0, 0.9999);
+    const cells = cutCells(), k = Math.floor(fx * cells.length), l = Math.floor(fy * gpm.meta.nlev);
+    const [s, r] = cells[k], z = dbzAt(s, r, l), h = gpm.meta.height_km[l];
+    $("gq-read").textContent = `${Math.round(gpm.dist[k])} km along · ${h.toFixed(1)} km high · ${z === z ? z.toFixed(1) + " dBZ" : "no echo"} · rain below ${gpm.meta.rain[s * gpm.meta.nray + r].toFixed(1)} mm/h`;
+    drawXsec({ x: fx * cv.width });
+  });
+  $("gq-xsec").addEventListener("pointerleave", () => { drawXsec(); $("gq-read").textContent = "Hover the slice to read the reflectivity."; });
+  $("gq-pos").addEventListener("input", e => setCut(gpm.dir, +e.target.value));
+  document.querySelectorAll("#gq-dir button").forEach(b => b.addEventListener("click", () => {
+    if (!gpm.ready || b.dataset.dir === gpm.dir) return;
+    const m = gpm.meta;
+    setCut(b.dataset.dir, b.dataset.dir === "along" ? Math.floor(m.nray / 2) : Math.floor(m.nscan / 2));
+  }));
 
   /* ---------- draw-a-box on the globe ---------- */
   let drawing = false, dragStart = null;
@@ -586,36 +913,31 @@
   /* =====================================================================
      Modes, tabs, globe
      ===================================================================== */
+  const MODES = ["live", "cube", "gpm"];
   function setMode(m) {
+    if (m === mode && globe) { globe.pointOfView(m === "live" ? HOME : m === "cube" ? CUBE_VIEW : GPM_VIEW, 1200); return; }
     mode = m;
-    const live = m === "live";
-    $("tab-live").setAttribute("aria-selected", String(live)); $("tab-live").tabIndex = live ? 0 : -1;
-    $("tab-cube").setAttribute("aria-selected", String(!live)); $("tab-cube").tabIndex = live ? -1 : 0;
-    $("pane-live").hidden = !live; $("pane-cube").hidden = live;
-    $("key-live").hidden = !live; $("key-cube").hidden = live;
+    MODES.forEach(k => {
+      const on = k === m;
+      $("tab-" + k).setAttribute("aria-selected", String(on)); $("tab-" + k).tabIndex = on ? 0 : -1;
+      $("pane-" + k).hidden = !on; $("key-" + k).hidden = !on;
+    });
     $("probe").textContent = "";
-    if (live) {
-      if (cube.playing) play();
-      setDrawing(false);
-    } else {
-      following = false;
-      $("sc-follow").setAttribute("aria-pressed", "false");
-      $("sc-follow").textContent = "Follow it";
-    }
-    if (globe) {
-      globe.tilesData(!live && cube.tile ? cube.tile : []);
-      globe.pointOfView(live ? HOME : CUBE_VIEW, 1200);
-    }
-    refreshSats(); refreshPaths(); refreshPoints(); refreshBox();
-    if (!live) initCube();
+    if (m !== "cube") { if (cube.playing) play(); setDrawing(false); }
+    if (m !== "live") { following = false; $("sc-follow").setAttribute("aria-pressed", "false"); $("sc-follow").textContent = "Follow it"; }
+    if (globe) globe.pointOfView(m === "live" ? HOME : m === "cube" ? CUBE_VIEW : GPM_VIEW, 1200);
+    refreshTiles(); refreshSats(); refreshPaths(); refreshPoints(); refreshBox();
+    buildCurtain();
+    if (m === "cube") initCube();
+    if (m === "gpm") initGpm();
   }
 
-  ["tab-live", "tab-cube"].forEach(id => {
-    $(id).addEventListener("click", () => setMode(id === "tab-live" ? "live" : "cube"));
-    $(id).addEventListener("keydown", e => {
+  MODES.forEach((k, i) => {
+    $("tab-" + k).addEventListener("click", () => setMode(k));
+    $("tab-" + k).addEventListener("keydown", e => {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-      const other = id === "tab-live" ? "tab-cube" : "tab-live";
-      setMode(other === "tab-live" ? "live" : "cube"); $(other).focus();
+      const next = MODES[(i + (e.key === "ArrowRight" ? 1 : MODES.length - 1)) % MODES.length];
+      setMode(next); $("tab-" + next).focus();
     });
   });
   const tryBtn = $("try-cube");
@@ -634,8 +956,8 @@
     e.currentTarget.setAttribute("aria-pressed", String(following));
     e.currentTarget.textContent = following ? "Following. Click to stop" : "Follow it";
   });
-  [["lay-swarm", "swarm"], ["lay-path", "path"], ["lay-rain", "rain"]].forEach(([id, k]) => {
-    $(id).addEventListener("change", e => { show[k] = e.target.checked; refreshSats(); refreshPaths(); refreshPoints(); });
+  [["lay-swarm", "swarm"], ["lay-path", "path"], ["lay-rain", "rain"], ["lay-clouds", "clouds"], ["lay-hsaf", "hsaf"], ["lay-tc", "tc"]].forEach(([id, k]) => {
+    $(id).addEventListener("change", e => { show[k] = e.target.checked; refreshSats(); refreshPaths(); refreshPoints(); refreshTiles(); });
   });
 
   if (window.Globe && webgl) {
@@ -656,7 +978,10 @@
       .polygonStrokeColor(() => "#F2D13A").polygonAltitude(0.012).polygonsTransitionDuration(0)
       .htmlLat("lat").htmlLng("lng").htmlAltitude("alt").htmlTransitionDuration(0)
       .htmlElement(s => s.el || makeSatEl(s))
-      .onGlobeClick(c => queryPoint(c.lat, c.lng));
+      .tileLat("lat").tileLng("lng").tileWidth("w").tileHeight("h").tileAltitude("alt")
+      .tileMaterial(d => d.mat).tileCurvatureResolution(1).tilesTransitionDuration(0)
+      .onTileClick((d, ev, c) => { if (c && d.onClick) d.onClick(c.lat, c.lng); })
+      .onGlobeClick(c => { queryPoint(c.lat, c.lng); pickFootprint(c.lat, c.lng); });
     if (typeof globe.htmlElementVisibilityModifier === "function") {
       globe.htmlElementVisibilityModifier((e, visible) => { e.style.opacity = visible ? 1 : 0; e.style.pointerEvents = visible ? "auto" : "none"; });
     }
@@ -692,5 +1017,10 @@
     setInterval(() => { refreshPaths(); nextPass(); }, 60e3);
   })();
   loadRain().catch(() => { $("r-rain").textContent = "Unavailable"; });
+  if (globe) {
+    loadLiveLayers().catch(() => { $("r-msg").textContent = "Unavailable"; });
+    setInterval(() => loadLiveLayers().catch(() => {}), 15 * 60e3);
+  }
+  loadCyclones().catch(() => { $("r-tc").textContent = "Unavailable"; });
   setInterval(() => loadRain().catch(() => {}), 10 * 60e3);
 })();
