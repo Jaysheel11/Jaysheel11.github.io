@@ -1,0 +1,19 @@
+{
+ "product": "Hydro-Estimator rain rate (L2B HEM)",
+ "satellite": "INSAT-3DR",
+ "file": "3RIMG_28NOV2026_1215_L2B_HEM_V01R00.h5",
+ "time": "2026-11-28T12:15:00Z",
+ "fetched": "2026-11-28T12:53:42Z",
+ "bbox": {
+  "lon0": 25.0,
+  "lat0": -40.0,
+  "lon1": 125.0,
+  "lat1": 45.0
+ },
+ "width": 1000,
+ "height": 850,
+ "unit": "mm/h",
+ "scale": 0.19607843137254902,
+ "wet_fraction": 0.0198,
+ "credit": "MOSDAC, SAC/ISRO"
+}
